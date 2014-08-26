@@ -65,12 +65,12 @@ def main():
     global quality
     
     #help
-    if(sys.argv != None and (sys.argv[1]=="help" or sys.argv[1]=="-help" or sys.argv[1]=="--help")):
+    if(len(sys.argv) == 2 and (sys.argv[1]=="help" or sys.argv[1]=="-help" or sys.argv[1]=="--help")):
         print("Usage: check.py [time] [user] [quality]")
         print("Default values: time=30 user=sing_sing quality=best")
         return
     
-    if sys.argv == None or len(sys.argv) < 2:   #No args
+    if sys.argv == None or len(sys.argv) <= 1:   #No args
         time = 30.0
         user = "sing_sing"
         quality = "best"
