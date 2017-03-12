@@ -1,4 +1,4 @@
-#This script checks if a user on twitch is currently streaming and then records the stream via livestreamer
+#This script checks if a user on twitch is currently streaming and then records the stream via streamlink
 from urllib.request import urlopen
 from urllib.error import URLError
 from threading import Timer
@@ -11,7 +11,7 @@ import datetime
 def check_user(user):
     """ returns 0: online, 1: offline, 2: not found, 3: error """
     global info
-    url = 'https://api.twitch.tv/kraken/streams/' + user + '?client_id=ofiwnxgx09emoy2ryd77ynuh25h0wc'
+    url = 'https://api.twitch.tv/kraken/streams/' + user + '?client_id=Add-Your-Client-ID-HERE'
     try:
         info = json.loads(urlopen(url, timeout = 15).read().decode('utf-8'))
         if info['stream'] == None:
