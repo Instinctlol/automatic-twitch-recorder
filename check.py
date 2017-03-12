@@ -1,5 +1,4 @@
-#This script checks if a user on twitch is currently streaming and then records the stream via livestreamer
-
+#This script checks if a user on twitch is currently streaming and then records the stream via streamlink
 from urllib.request import urlopen
 from urllib.error import URLError
 from threading import Timer
@@ -12,7 +11,7 @@ import datetime
 def check_user(user):
     """ returns 0: online, 1: offline, 2: not found, 3: error """
     global info
-    url = 'https://api.twitch.tv/kraken/streams/' + user
+    url = 'https://api.twitch.tv/kraken/streams/' + user + '?client_id=Add-Your-Client-ID-HERE'
     try:
         info = json.loads(urlopen(url, timeout = 15).read().decode('utf-8'))
         if info['stream'] == None:
@@ -53,7 +52,7 @@ def loopcheck():
         print(user,"online. stop.")
         filename = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")+" - "+user+" - "+(info['stream']).get("channel").get("status")+".flv"
         filename = format_filename(filename)
-        subprocess.call(["livestreamer","twitch.tv/"+user,quality,"-o",filename])
+        subprocess.call(["streamlink","https://twitch.tv/"+user,quality,"-o",filename])
         print("Stream is done. Going back to checking..")
         t = Timer(time, loopcheck)
         t.start()
@@ -63,16 +62,16 @@ def main():
     global time
     global user
     global quality
-    
+
     #help
     if(len(sys.argv) == 2 and (sys.argv[1]=="help" or sys.argv[1]=="-help" or sys.argv[1]=="--help")):
         print("Usage: check.py [time] [user] [quality]")
         print("Default values: time=30 user=sing_sing quality=best")
         return
-    
+
     if sys.argv == None or len(sys.argv) <= 1:   #No args
         time = 30.0
-        user = "sing_sing"
+        user = "cohhcarnage"
         quality = "best"
     elif len(sys.argv) < 3:                     #argv[1] = time
         time = int(sys.argv[1])
@@ -86,17 +85,17 @@ def main():
         time = int(sys.argv[1])
         user = sys.argv[2]
         quality = sys.argv[3]
-        
+
     if(time<15):
         print("Time shouldn't be lower than 15 seconds")
         time=15
-        
+
     t = Timer(time, loopcheck)
     print("Checking for",user,"every",time,"seconds. Record with",quality,"quality.")
     loopcheck()
     t.start()
-    
-    
+
+
 if __name__ == "__main__":
     # execute only if run as a script
     main()
