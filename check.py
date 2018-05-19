@@ -1,29 +1,35 @@
 #This script checks if a user on twitch is currently streaming and then records the stream via streamlink
-from urllib.request import urlopen
-from urllib.error import URLError
 from threading import Timer
-import json
 import sys
 import subprocess
 import datetime
+from twitch import TwitchClient
+import re
+
+CLIENT_ID = 'ADD YOUR CLIENT ID HERE'
+
 
 
 def check_user(user):
     """ returns 0: online, 1: offline, 2: not found, 3: error """
-    global info
-    url = 'https://api.twitch.tv/kraken/streams/' + user + '?client_id=Add-Your-Client-ID-HERE'
-    try:
-        info = json.loads(urlopen(url, timeout = 15).read().decode('utf-8'))
-        if info['stream'] == None:
-            status = 1
+
+    client = TwitchClient(client_id=CLIENT_ID)
+    response = client.users.translate_usernames_to_ids(user)
+    stream_info = 0
+    if response.__len__() > 0:
+        user_id = response[0].id
+        stream_info = client.streams.get_stream_by_user(user_id)
+        if stream_info is not None:
+            if stream_info.broadcast_platform == 'live':
+                status = 0  # user is streaming
+            else:
+                status = 3  # unexpected error
         else:
-            status = 0
-    except URLError as e:
-        if e.reason == 'Not Found' or e.reason == 'Unprocessable Entity':
-            status = 2
-        else:
-            status = 3
-    return status
+            status = 1      # user offline
+    else:
+        status = 2          # user not found
+
+    return status, stream_info
 
 def format_filename(fname):
     fname = fname.replace("/","")
@@ -39,18 +45,18 @@ def format_filename(fname):
 
 
 def loopcheck():
-    status = check_user(user)
+    status, stream_info = check_user(user)
     if status == 2:
-        print("username not found. invalid username?")
+        print("Username not found. Invalid username?")
     elif status == 3:
-        print("unexpected error. maybe try again later")
+        print("Unexpected error. Maybe try again later")
     elif status == 1:
         t = Timer(time, loopcheck)
-        print(user,"currently offline, checking again in",time,"seconds")
+        print(user,"is currently offline, checking again in",time,"seconds")
         t.start()
     elif status == 0:
-        print(user,"online. stop.")
-        filename = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")+" - "+user+" - "+(info['stream']).get("channel").get("status")+".flv"
+        print(user,"is online. Stop.")
+        filename = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")+" - "+user+" - "+re.sub(r'\W+', ' ', stream_info['channel']['status'])+".flv"
         filename = format_filename(filename)
         subprocess.call(["streamlink","https://twitch.tv/"+user,quality,"-o",filename])
         print("Stream is done. Going back to checking..")
@@ -66,16 +72,16 @@ def main():
     #help
     if(len(sys.argv) == 2 and (sys.argv[1]=="help" or sys.argv[1]=="-help" or sys.argv[1]=="--help")):
         print("Usage: check.py [time] [user] [quality]")
-        print("Default values: time=30 user=sing_sing quality=best")
+        print("Default values: time=30 user=forsen quality=best")
         return
 
     if sys.argv == None or len(sys.argv) <= 1:   #No args
         time = 30.0
-        user = "cohhcarnage"
+        user = "forsen"
         quality = "best"
     elif len(sys.argv) < 3:                     #argv[1] = time
         time = int(sys.argv[1])
-        user = "sing_sing"
+        user = "forsen"
         quality = "best"
     elif len(sys.argv) < 4:                     #argv[1] = time AND argv[2] = user
         time = int(sys.argv[1])
