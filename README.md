@@ -15,6 +15,8 @@ Checks if a user on twitch is currently streaming and then records the stream vi
 - open cmd/terminal
   - change directory into folder containing the file 'requirements.txt'
   - type 'pip install -r requirements.txt'
+- edit line 9 in 'check.py' with your text editor of choice so it contains your twitch client id
+  - you can create it [here](https://glass.twitch.tv/console/apps)
 
 ## Usage:
 
