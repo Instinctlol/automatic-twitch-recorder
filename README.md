@@ -31,3 +31,5 @@ Checks if a user on twitch is currently streaming and then records the stream vi
 ## Plans for the future:
 
 - When done recording, upload to YouTube
+- Monitor multiple streams / implement threading
+- Export to .exe so you don't have to install python (very easy)
