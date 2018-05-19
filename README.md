@@ -24,6 +24,7 @@ Checks if a user on twitch is currently streaming and then records the stream vi
   - [time] is measured in seconds, e.g. '30' for 30 seconds
   - [user] is the user you want to record, e.g. 'forsen'
   - [quality] is the stream quality you want to record, 'best' is default. Refer to streamlink documentation for more info.
+- e.g. 'python check.py 30 forsen best' will check every 30 seconds if forsen is online, if so: record with best quality.
 
 
 ## Plans for the future:
