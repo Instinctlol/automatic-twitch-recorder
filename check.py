@@ -6,7 +6,8 @@ import datetime
 from twitch import TwitchClient
 import re
 
-CLIENT_ID = 'ADD YOUR CLIENT ID HERE'
+CLIENT_ID = 'PASTE YOUR CLIENT ID HERE AS A STRING'
+# e.g. CLIENT_ID = '123456789ABCDEFG'
 
 
 
