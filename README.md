@@ -17,7 +17,6 @@ Checks if a user on twitch is currently streaming and then records the stream vi
   - type 'pip install -r requirements.txt'
 - edit line 9 in 'check.py' with your text editor of choice so it contains your twitch client id
   - you can create it [here](https://glass.twitch.tv/console/apps)
-- it is recommended to have [VLC Player](https://www.videolan.org/vlc/index.html) installed as well, refer to [streamlink documentation](https://streamlink.github.io/) for more info.
 
 ## Usage:
 
