@@ -32,19 +32,6 @@ def check_user(user):
 
     return status, stream_info
 
-def format_filename(fname):
-    fname = fname.replace("/","")
-    fname = fname.replace("?","")
-    fname = fname.replace(":","-")
-    fname = fname.replace("\\","")
-    fname = fname.replace("<","")
-    fname = fname.replace(">","")
-    fname = fname.replace("*","")
-    fname = fname.replace("\"","")
-    fname = fname.replace("|","")
-    return fname
-
-
 def loopcheck():
     status, stream_info = check_user(user)
     if status == 2:
@@ -57,8 +44,7 @@ def loopcheck():
         t.start()
     elif status == 0:
         print(user,"is online. Stop.")
-        filename = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")+" - "+user+" - "+re.sub(r'\W+', ' ', stream_info['channel']['status'])+".flv"
-        filename = format_filename(filename)
+        filename = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")+" - "+user+" - "+re.sub(r"[^a-zA-Z0-9]+", ' ', stream_info['channel']['status'])+".flv"
         subprocess.call(["streamlink","https://twitch.tv/"+user,quality,"-o",filename])
         print("Stream is done. Going back to checking..")
         t = Timer(time, loopcheck)
