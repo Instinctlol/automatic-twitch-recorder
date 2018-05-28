@@ -1,14 +1,14 @@
 #This script checks if a user on twitch is currently streaming and then records the stream via streamlink
-from threading import Timer
-import sys
-import subprocess
 import datetime
-from twitch import TwitchClient
 import re
+import subprocess
+import sys
+import os
+from threading import Timer
+from twitch import TwitchClient
 
 CLIENT_ID = 'PASTE YOUR CLIENT ID HERE AS A STRING'
 # e.g. CLIENT_ID = '123456789ABCDEFG'
-
 
 
 def check_user(user):
@@ -44,8 +44,11 @@ def loopcheck():
         t.start()
     elif status == 0:
         print(user,"is online. Stop.")
-        filename = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")+" - "+user+" - "+re.sub(r"[^a-zA-Z0-9]+", ' ', stream_info['channel']['status'])+".flv"
-        subprocess.call(["streamlink","https://twitch.tv/"+user,quality,"-o",filename])
+        filename = datetime.datetime.now().strftime("%Y-%m-%d %H.%M.%S")+" - "+user+" - "+re.sub(r"[^a-zA-Z0-9]+", ' ', stream_info['channel']['status'])+".flv"
+        dir = os.getcwd()+"\\"+user
+        if not os.path.exists(dir):
+            os.makedirs(dir)
+        subprocess.call(["streamlink","https://twitch.tv/"+user,quality,"-o",filename], cwd=dir)
         print("Stream is done. Going back to checking..")
         t = Timer(time, loopcheck)
         t.start()
@@ -64,7 +67,7 @@ def main():
 
     if sys.argv == None or len(sys.argv) <= 1:   #No args
         time = 30.0
-        user = "forsen"
+        user = "singsing"
         quality = "best"
     elif len(sys.argv) < 3:                     #argv[1] = time
         time = int(sys.argv[1])
