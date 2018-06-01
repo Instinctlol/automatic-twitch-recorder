@@ -45,7 +45,7 @@ def loopcheck():
     elif status == 0:
         print(user,"is online. Stop.")
         filename = datetime.datetime.now().strftime("%Y-%m-%d %H.%M.%S")+" - "+user+" - "+re.sub(r"[^a-zA-Z0-9]+", ' ', stream_info['channel']['status'])+".flv"
-        dir = os.getcwd()+"\\"+user
+        dir = os.getcwd()+os.path.sep+user
         if not os.path.exists(dir):
             os.makedirs(dir)
         subprocess.call(["streamlink","https://twitch.tv/"+user,quality,"-o",filename], cwd=dir)
