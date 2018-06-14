@@ -4,12 +4,16 @@ import re
 import subprocess
 import sys
 import os
+import getopt
 from threading import Timer
 from twitch import TwitchClient
 
 CLIENT_ID = 'PASTE YOUR CLIENT ID HERE AS A STRING'
 # e.g. CLIENT_ID = '123456789ABCDEFG'
+#
 
+VALID_BROADCAST = [ 'live' ]
+# 'rerun' can be added through commandline flags/options
 
 def check_user(user):
     """ returns 0: online, 1: offline, 2: not found, 3: error """
@@ -21,7 +25,7 @@ def check_user(user):
         user_id = response[0].id
         stream_info = client.streams.get_stream_by_user(user_id)
         if stream_info is not None:
-            if stream_info.broadcast_platform == 'live':
+            if stream_info.broadcast_platform in VALID_BROADCAST:
                 status = 0  # user is streaming
             else:
                 status = 3  # unexpected error
@@ -36,6 +40,7 @@ def loopcheck():
     status, stream_info = check_user(user)
     if status == 2:
         print("Username not found. Invalid username?")
+        sys.exit(3)
     elif status == 3:
         print("Unexpected error. Maybe try again later")
     elif status == 1:
@@ -53,38 +58,72 @@ def loopcheck():
         t = Timer(time, loopcheck)
         t.start()
 
+def usage():
+    print("Usage: check.py [options] [user]")
+    print("This script checks if a user on twitch is currently streaming and then records the stream via streamlink")
+    print("    -h,--help               Display this message.")
+    print("    -t,--time=TIME          Set the time interval in seconds between checks for user. Default is 30.")
+    print("    -q,--quality=QUALITY    Set the quality of the stream. Default is 'best'.")
+    print("    -r,--allow-rerun        Don't ignore reruns.")
+
+
 
 def main():
     global time
     global user
     global quality
 
-    #help
-    if(len(sys.argv) == 2 and (sys.argv[1]=="help" or sys.argv[1]=="-help" or sys.argv[1]=="--help")):
-        print("Usage: check.py [time] [user] [quality]")
-        print("Default values: time=30 user=forsen quality=best")
-        return
+    # Defaults
+    time=30.0
+    quality="best"
 
-    if sys.argv == None or len(sys.argv) <= 1:   #No args
-        time = 30.0
-        user = "singsing"
-        quality = "best"
-    elif len(sys.argv) < 3:                     #argv[1] = time
-        time = int(sys.argv[1])
-        user = "forsen"
-        quality = "best"
-    elif len(sys.argv) < 4:                     #argv[1] = time AND argv[2] = user
-        time = int(sys.argv[1])
-        user = sys.argv[2]
-        quality = "best"
-    else:                                       #argv[1] = time AND argv[2] = user AND argv[3] = quality
-        time = int(sys.argv[1])
-        user = sys.argv[2]
-        quality = sys.argv[3]
+    # Use getopts to process options and arguments.
+    try:
+        opts, args = getopt.getopt(sys.argv[1:], "ht:q:r", ["help", "time=","quality=","allow-rerun"])
+    except getopt.GetoptError:
+        usage()
+        sys.exit(2)
+
+    for opt, arg in opts:
+        if opt in ("-h", "--help"):  # Display help message
+            usage()
+            sys.exit()
+        elif opt in ('-t', '--time'): # Set time interval between checks for user
+            try:
+                time = int(arg)
+            except ValueError as ex:
+                print('"%s" cannot be converted to an int: %s' % (arg, ex))
+                print("Using default: %ds" %(time))
+                print("")
+        elif opt in ("-q", "--quality"): # Set quality
+            quality = arg
+        elif opt in ("-r", "--allow-rerun"): # Allow recording of reruns
+            VALID_BROADCAST.append('rerun')
+
+    # Checking if the remaining arguments are valid.
+    if len(args) > 1:
+        user = " ".join(args)
+        print("'%s' is not a valid username" %(user))
+        print("")
+        usage()
+        sys.exit(2)
+
+    # Check if user is supplied.
+    user = "".join(args)
+    if user == "":
+        print("User not supplied")
+        usage()
+        sys.exit(2)
 
     if(time<15):
         print("Time shouldn't be lower than 15 seconds")
         time=15
+
+
+    if CLIENT_ID == 'PASTE YOUR CLIENT ID HERE AS A STRING':
+        print("You must edit the CLIENT_ID variable in this script with your personal client id.")
+        print("https://blog.twitch.tv/client-id-required-for-kraken-api-calls-afbb8e95f843")
+        sys.exit(4)
 
     t = Timer(time, loopcheck)
     print("Checking for",user,"every",time,"seconds. Record with",quality,"quality.")
