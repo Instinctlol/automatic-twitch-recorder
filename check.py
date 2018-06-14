@@ -10,7 +10,6 @@ from twitch import TwitchClient
 
 CLIENT_ID = 'PASTE YOUR CLIENT ID HERE AS A STRING'
 # e.g. CLIENT_ID = '123456789ABCDEFG'
-#
 
 VALID_BROADCAST = [ 'live' ]
 # 'rerun' can be added through commandline flags/options
@@ -63,7 +62,7 @@ def usage():
     print("This script checks if a user on twitch is currently streaming and then records the stream via streamlink")
     print("    -h,--help               Display this message.")
     print("    -t,--time=TIME          Set the time interval in seconds between checks for user. Default is 30.")
-    print("    -q,--quality=QUALITY    Set the quality of the stream. Default is 'best'.")
+    print("    -q,--quality=QUALITY    Set the quality of the stream. Default is 'best'. See streamlink documentation for more details.")
     print("    -r,--allow-rerun        Don't ignore reruns.")
 
 
@@ -80,7 +79,8 @@ def main():
     # Use getopts to process options and arguments.
     try:
         opts, args = getopt.getopt(sys.argv[1:], "ht:q:r", ["help", "time=","quality=","allow-rerun"])
-    except getopt.GetoptError:
+    except getopt.GetoptError as ex:
+        print(ex)
         usage()
         sys.exit(2)
 
@@ -122,7 +122,7 @@ def main():
 
     if CLIENT_ID == 'PASTE YOUR CLIENT ID HERE AS A STRING':
         print("You must edit the CLIENT_ID variable in this script with your personal client id.")
-        print("https://blog.twitch.tv/client-id-required-for-kraken-api-calls-afbb8e95f843")
+        print("https://glass.twitch.tv/console/apps")
         sys.exit(4)
 
     t = Timer(time, loopcheck)
