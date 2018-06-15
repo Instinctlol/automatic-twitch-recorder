@@ -14,17 +14,17 @@ Checks if a user on twitch is currently streaming and then records the stream vi
 - make sure you have python3 installed
 - open cmd/terminal
   - change directory into folder containing the file 'requirements.txt'
-  - type 'pip install -r requirements.txt'
-- edit line 10 in 'check.py' with your text editor of choice so it contains your twitch client id
+  - type `pip install -r requirements.txt`
+- edit line 11 in 'check.py' with your text editor of choice so it contains your twitch client id
   - you can create it [here](https://glass.twitch.tv/console/apps)
 
 ## Usage:
 
-- in your cmd/terminal, type 'python check.py [time] [user] [quality]'
+- in your cmd/terminal, run `python check.py [options] [user]`
   - [time] is measured in seconds, e.g. '30' for 30 seconds
   - [user] is the user you want to record, e.g. 'forsen'
   - [quality] is the stream quality you want to record, 'best' is default. Refer to [streamlink documentation](https://streamlink.github.io/) for more info.
-- e.g. 'python check.py 30 forsen best' will check every 30 seconds if forsen is online, if so: record with best quality.
+- call `python check.py --help` for a detailed description.
 
 
 ## Plans for the future:
