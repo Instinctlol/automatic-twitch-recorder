@@ -5,20 +5,53 @@ import subprocess
 import sys
 import os
 import getopt
+from requests import exceptions as reqexc
 from threading import Timer
 from twitch import TwitchClient
 
 CLIENT_ID = 'PASTE YOUR CLIENT ID HERE AS A STRING'
 # e.g. CLIENT_ID = '123456789ABCDEFG'
 
+CLIENT_ID_FILE = os.getcwd()+os.path.sep+"client_id.txt"
+# Location of client_id.txt config file.
+
 VALID_BROADCAST = [ 'live' ]
 # 'rerun' can be added through commandline flags/options
 
-def check_user(user):
-    """ returns 0: online, 1: offline, 2: not found, 3: error """
+def get_client_id():
+    print("Visit the following website to generate a client id for this script.")
+    print("https://glass.twitch.tv/console/apps")
+    print("Enter client id from website.")
+    id=input("client id: ")
+    client_file=open(CLIENT_ID_FILE,'w')
+    client_file.write(id)
+    client_file.close()
+    #sys.exit(4)
 
-    client = TwitchClient(client_id=CLIENT_ID)
-    response = client.users.translate_usernames_to_ids(user)
+def check_client_id():
+    global CLIENT_ID
+    try:
+        client_file=open(CLIENT_ID_FILE,'r')
+    except FileNotFoundError as ex:
+        print(ex)
+        print("Client id file doesn't exist.")
+        get_client_id()
+        sys.exit(4)
+    CLIENT_ID=client_file.read()
+    client_file.close()
+
+def check_user(user):
+    global CLIENT_ID
+    global VALID_BROADCAST
+    """ returns 0: online, 1: offline, 2: not found, 3: error """
+    try:
+        client = TwitchClient(client_id=CLIENT_ID)
+        response = client.users.translate_usernames_to_ids(user)
+    except reqexc.HTTPError as ex:
+        print("Bad client id: '%s'" %(CLIENT_ID))
+        print(ex)
+        get_client_id()
+        sys.exit(4)
     stream_info = 0
     if response.__len__() > 0:
         user_id = response[0].id
@@ -63,6 +96,7 @@ def usage():
     print("    -h,--help               Display this message.")
     print("    -t,--time=TIME          Set the time interval in seconds between checks for user. Default is 30.")
     print("    -q,--quality=QUALITY    Set the quality of the stream. Default is 'best'. See streamlink documentation for more details.")
+    print("    -c,--client-id=ID       Override the client id. The script will ask for an id if not given or stored in a configuration file.")
     print("    -r,--allow-rerun        Don't ignore reruns.")
 
 
@@ -71,6 +105,8 @@ def main():
     global time
     global user
     global quality
+    global VALID_BROADCAST
+    global CLIENT_ID
 
     # Defaults
     time=30.0
@@ -78,7 +114,7 @@ def main():
 
     # Use getopts to process options and arguments.
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "ht:q:r", ["help", "time=","quality=","allow-rerun"])
+        opts, args = getopt.getopt(sys.argv[1:], "ht:q:c:r", ["help", "time=","quality=","client-id=","allow-rerun"])
     except getopt.GetoptError as ex:
         print(ex)
         usage()
@@ -99,6 +135,8 @@ def main():
             quality = arg
         elif opt in ("-r", "--allow-rerun"): # Allow recording of reruns
             VALID_BROADCAST.append('rerun')
+        elif opt in ("-c", "--client-id"): # Override client id
+            CLIENT_ID = arg
 
     # Checking if the remaining arguments are valid.
     if len(args) > 1:
@@ -121,10 +159,9 @@ def main():
 
 
     if CLIENT_ID == 'PASTE YOUR CLIENT ID HERE AS A STRING':
-        print("You must edit the CLIENT_ID variable in this script with your personal client id.")
-        print("https://glass.twitch.tv/console/apps")
-        sys.exit(4)
+        check_client_id()
 
+    
     t = Timer(time, loopcheck)
     print("Checking for",user,"every",time,"seconds. Record with",quality,"quality.")
     loopcheck()
