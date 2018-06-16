@@ -4,9 +4,9 @@ Checks if a user on twitch is currently streaming and then records the stream vi
 
 ## Dependencies:
 
-- streamlink (https://streamlink.github.io)
-- python-twitch-client (https://github.com/tsifrer/python-twitch-client)
-- python (https://www.python.org/)
+- [streamlink](https://streamlink.github.io)
+- [python-twitch-client](https://github.com/tsifrer/python-twitch-client)
+- [python](https://www.python.org/)
 
 ## Installation:
 
@@ -15,7 +15,7 @@ Checks if a user on twitch is currently streaming and then records the stream vi
 - open cmd/terminal
   - change directory into folder containing the file 'requirements.txt'
   - type `pip install -r requirements.txt`
-- edit line 11 in 'check.py' with your text editor of choice so it contains your twitch client id
+- You will need your twitch client id
   - you can create it [here](https://glass.twitch.tv/console/apps)
 
 ## Usage:
@@ -32,3 +32,4 @@ Checks if a user on twitch is currently streaming and then records the stream vi
 - When done recording, upload to YouTube
 - Monitor multiple streams / implement threading
 - Export to .exe so you don't have to install python (very easy)
+- Use streamlink objects rather than a subprocess
