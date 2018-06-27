@@ -162,10 +162,10 @@ def main():
         check_client_id()
 
     
-    t = Timer(time, loopcheck)
+#    t = Timer(time, loopcheck)
     print("Checking for",user,"every",time,"seconds. Record with",quality,"quality.")
     loopcheck()
-    t.start()
+#    t.start()
 
 
 if __name__ == "__main__":
