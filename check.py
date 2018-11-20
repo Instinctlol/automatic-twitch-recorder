@@ -17,8 +17,8 @@ def usage():
     print("    -q,--quality=QUALITY    Set the quality of the stream. Default is 'best'. See streamlink documentation for more details.")
     print("    -c,--client-id=ID       Override the client id. The script will ask for an id if not given or stored in a configuration file.")
     print("    -r,--allow-rerun        Don't ignore reruns.")
-
-
+    print("    -d,--rec-dir=DIRECTORY  Set the recording directory.")
+    print("    -o,--out-dir=DIRECTORY  Set the final directory.")
 
 def loopcheck(stream):
     if not stream.valid_user():
@@ -26,11 +26,15 @@ def loopcheck(stream):
         sys.exit(3)
     elif stream.is_online():
         print(stream.user,"is online. Stop.")
-        filename = datetime.datetime.now().strftime("%Y-%m-%d %H.%M.%S")+" - "+stream.user+" - "+re.sub(r"[^a-zA-Z0-9]+", ' ', stream.stream_info['channel']['status'])+".flv"
-        dir = os.getcwd()+os.path.sep+stream.user
-        if not os.path.exists(dir):
-            os.makedirs(dir)
-        subprocess.call(["streamlink","https://twitch.tv/"+stream.user,stream.quality,"-o",filename], cwd=dir)
+        stream.filename = datetime.datetime.now().strftime("%Y-%m-%d %H.%M.%S")+" - "+stream.user+" - "+re.sub(r"[^a-zA-Z0-9]+", ' ', stream.stream_info['channel']['status'])+".flv"
+        if not os.path.exists(stream.recdir):
+            os.makedirs(stream.recdir)
+        subprocess.call(["streamlink","https://twitch.tv/"+stream.user,stream.quality,"-o",stream.filename], cwd=stream.recdir)
+        if stream.outdir is not None:
+            print("Moving file to "+stream.outdir)
+            if not os.path.exists(stream.outdir):
+                os.makedirs(stream.outdir)
+            os.rename(stream.recdir+os.path.sep+stream.filename,stream.outdir+os.path.sep+stream.filename)
         print("Stream is done. Going back to checking..")
         t = Timer(stream.time, loopcheck, args=[stream])
         t.start()
@@ -45,12 +49,14 @@ def main():
     time=30.0
     quality="best"
     rerun=False
+    outdir=None
+    recdir=None
 
 
 
     # Use getopts to process options and arguments.
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "ht:q:c:r", ["help", "time=","quality=","client-id=","allow-rerun"])
+        opts, args = getopt.getopt(sys.argv[1:], "ht:q:c:rd:o:", ["help", "time=","quality=","client-id=","allow-rerun","rec-dir=","out-dir="])
     except getopt.GetoptError as ex:
         print(ex)
         usage()
@@ -92,6 +98,10 @@ def main():
             rerun = True
         elif opt in ("-c", "--client-id"): # Override client id
             tr.CLIENT_ID = arg
+        elif opt in ("-d", "--rec-dir"): # Set recording directory
+            recdir = arg
+        elif opt in ("-o", "--out-dir"): # Set output directory
+            outdir = arg
 
 
     if tr.CLIENT_ID == '':
@@ -99,6 +109,11 @@ def main():
 
 
     stream = tr.TwitchUser(user, time=time, quality=quality, rerun=rerun)
+    if recdir is not None:
+        stream.recdir = recdir
+    if outdir is not None:
+        stream.outdir = outdir
+
 
     print("Checking for",stream.user,"every",stream.time,"seconds. Record with",stream.quality,"quality.")
     loopcheck(stream)

@@ -38,6 +38,9 @@ class TwitchUser(object):
         self.quality = kwargs.get("quality","best")
         self.rerun = kwargs.get("rerun",False)
         self.time = kwargs.get("time",30)
+        self.filename=None
+        self.recdir=os.getcwd()+os.path.sep+self.user
+        self.outdir=None
         self.broadcasts = ['live']
         if self.rerun:
             self.broadcasts.append('rerun')
