@@ -4,6 +4,7 @@ import re
 import subprocess
 import sys
 import os
+import shutil
 import getopt
 import TwitchRecord as tr
 from threading import Timer
@@ -34,7 +35,7 @@ def loopcheck(stream):
             print("Moving file to "+stream.outdir)
             if not os.path.exists(stream.outdir):
                 os.makedirs(stream.outdir)
-            os.rename(stream.recdir+os.path.sep+stream.filename,stream.outdir+os.path.sep+stream.filename)
+            shutil.move(stream.recdir+os.path.sep+stream.filename,stream.outdir+os.path.sep+stream.filename)
         print("Stream is done. Going back to checking..")
         t = Timer(stream.time, loopcheck, args=[stream])
         t.start()
