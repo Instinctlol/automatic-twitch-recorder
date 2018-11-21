@@ -41,6 +41,8 @@ class TwitchUser(object):
         self.filename=None
         self.recdir=os.getcwd()+os.path.sep+self.user
         self.outdir=None
+        self.conv=False
+        self.keep=False
         self.broadcasts = ['live']
         if self.rerun:
             self.broadcasts.append('rerun')

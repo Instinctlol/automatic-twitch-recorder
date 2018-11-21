@@ -4,6 +4,7 @@ import re
 import subprocess
 import sys
 import os
+import shutil
 import getopt
 import TwitchRecord as tr
 from threading import Timer
@@ -19,6 +20,8 @@ def usage():
     print("    -r,--allow-rerun        Don't ignore reruns.")
     print("    -d,--rec-dir=DIRECTORY  Set the recording directory.")
     print("    -o,--out-dir=DIRECTORY  Set the final directory.")
+    print("    -f,--ffmpeg             Convert the file with ffmpeg after finished recording.")
+    print("    -k,--keep               Keep the source file after converting.")
 
 def loopcheck(stream):
     if not stream.valid_user():
@@ -30,11 +33,16 @@ def loopcheck(stream):
         if not os.path.exists(stream.recdir):
             os.makedirs(stream.recdir)
         subprocess.call(["streamlink","https://twitch.tv/"+stream.user,stream.quality,"-o",stream.filename], cwd=stream.recdir)
+        if stream.conv:
+            subprocess.call(['ffmpeg','-y', '-i',stream.filename, '-c:v', 'libx265', '-crf', '28', '-c:a', 'aac', '-strict', '-2', stream.filename+'.x265.mkv'], cwd=stream.recdir)
+            if not stream.keep:
+                os.remove(stream.recdir+os.path.sep+stream.filename)
+            stream.filename = stream.filename+".x265.mkv"
         if stream.outdir is not None:
             print("Moving file to "+stream.outdir)
             if not os.path.exists(stream.outdir):
                 os.makedirs(stream.outdir)
-            os.rename(stream.recdir+os.path.sep+stream.filename,stream.outdir+os.path.sep+stream.filename)
+            shutil.move(stream.recdir+os.path.sep+stream.filename,stream.outdir+os.path.sep+stream.filename)
         print("Stream is done. Going back to checking..")
         t = Timer(stream.time, loopcheck, args=[stream])
         t.start()
@@ -51,12 +59,14 @@ def main():
     rerun=False
     outdir=None
     recdir=None
+    conv=False
+    keep=False
 
 
 
     # Use getopts to process options and arguments.
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "ht:q:c:rd:o:", ["help", "time=","quality=","client-id=","allow-rerun","rec-dir=","out-dir="])
+        opts, args = getopt.getopt(sys.argv[1:], "ht:q:c:rd:o:fk", ["help", "time=","quality=","client-id=","allow-rerun","rec-dir=","out-dir=","ffmpeg","keep"])
     except getopt.GetoptError as ex:
         print(ex)
         usage()
@@ -102,6 +112,10 @@ def main():
             recdir = arg
         elif opt in ("-o", "--out-dir"): # Set output directory
             outdir = arg
+        elif opt in ("-f", "--ffmpeg"): # Set output directory
+            conv = True
+        elif opt in ("-k", "--keep"): # Set output directory
+            keep = True
 
 
     if tr.CLIENT_ID == '':
@@ -113,6 +127,10 @@ def main():
         stream.recdir = recdir
     if outdir is not None:
         stream.outdir = outdir
+    if conv:
+        stream.conv=True
+    if keep:
+        stream.keep=True
 
 
     print("Checking for",stream.user,"every",stream.time,"seconds. Record with",stream.quality,"quality.")
