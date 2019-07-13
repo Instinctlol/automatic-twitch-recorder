@@ -1,0 +1,14 @@
+certifi==2019.6.16
+chardet==3.0.4
+idna==2.8
+iso-639==0.4.5
+iso3166==1.0
+isodate==0.6.0
+pycryptodome==3.8.2
+PySocks==1.7.0
+python-twitch-client==0.6.0
+requests==2.22.0
+six==1.12.0
+streamlink==1.1.1
+urllib3==1.25.3
+websocket-client==0.47.0
