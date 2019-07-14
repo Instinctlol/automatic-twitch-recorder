@@ -32,9 +32,9 @@ Checks if a user on twitch is currently streaming and then records the stream vi
 Example inputs:
 
 ```
-add forsen
-add nymn
-start
+$ add forsen
+$ add nymn
+$ start
 ```
 
 
