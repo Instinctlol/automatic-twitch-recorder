@@ -1,7 +1,23 @@
 import os
+from enum import Enum
 from pathlib import Path
+from pathvalidate import sanitize_filepath
 
 CLIENT_ID_FILE = os.getcwd() + os.path.sep + 'client_id.txt'  # Location of client_id.txt config file.
+
+
+# TODO: figure it out from streamlink library
+class StreamQualities(Enum):
+    AUDIO_ONLY = 'audio_only'
+    _160p = '160p'
+    _360 = '360p'
+    _480p = '480p'
+    _720p = '720p'
+    _720p60 = '720p60'
+    _1080p = '1080p'
+    _1080p60 = '1080p60'
+    WORST = 'worst'
+    BEST = 'best'
 
 
 def get_client_id():
@@ -25,3 +41,8 @@ def get_client_id():
         client_id = client_file.read()
         client_file.close()
         return client_id
+
+
+def get_valid_filename(s):
+    s = str(s)
+    return sanitize_filepath(s)
