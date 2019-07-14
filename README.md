@@ -29,6 +29,14 @@ Checks if a user on twitch is currently streaming and then records the stream vi
   - `list`: prints all added streamers
   - `exit`: stops the application and all currently running recordings
 
+Example inputs:
+
+```
+add forsen
+add nymn
+start
+```
+
 
 ### Outdated:
 
