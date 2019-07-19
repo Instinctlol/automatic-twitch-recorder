@@ -22,7 +22,7 @@ Checks if a user on twitch is currently streaming and then records the stream vi
 
 - in your cmd/terminal, run `python atr_cmd.py`
 - type `help`
-  - `add streamer [quality]`: adds the streamer you want to record in given optional quality, e.g. `add forsen`. Default quality: `best`
+  - `add streamer [quality]`: adds the streamer you want to record in given optional quality, e.g. `add forsen`. Default quality: `best`, quality options: `1080p60, 1080p, 720p60, 720p, 480p, 360p, 160p, audio_only`
   - `time 30`: sets check interval in seconds, please don't go below `10`
   - `remove streamer`: removes streamer, also stops recording this streamer
   - `start`: starts checking for / recording all added streamers
