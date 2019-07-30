@@ -1,7 +1,7 @@
 import os
 from enum import Enum
 from pathlib import Path
-from pathvalidate import sanitize_filepath
+from pathvalidate import sanitize_filename
 
 CLIENT_ID_FILE = os.getcwd() + os.path.sep + 'client_id.txt'  # Location of client_id.txt config file.
 
@@ -45,4 +45,4 @@ def get_client_id():
 
 def get_valid_filename(s):
     s = str(s)
-    return sanitize_filepath(s)
+    return sanitize_filename(s)
