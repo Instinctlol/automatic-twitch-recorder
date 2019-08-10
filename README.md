@@ -57,6 +57,7 @@ check.py is not supported anymore, it's only included for legacy purposes and ma
 
 ## Plans for the future:
 
+- Refactor to easily support any supported streamlink platform, e.g. YouTube and Mixer.
 - When done recording, upload to YouTube
 - Export to .exe so you don't have to install python
   - PyInstaller and streamlink apparently do not work well together (streamlink will throw NoPluginError). Help is appreciated.
