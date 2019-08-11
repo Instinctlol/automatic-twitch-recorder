@@ -34,33 +34,43 @@ class Watcher:
         try:
             stream = streams[self.stream_quality]
         except KeyError:
-            print('Invalid stream quality: ' + self.stream_quality)
-            print('Falling back to default case: best')
-            self.stream_quality = StreamQualities.BEST.value
-            self.streamer_dict['preferred_quality'] = self.stream_quality
-            stream = streams[self.stream_quality]
+            temp_quality = self.stream_quality
+            if len(streams) > 0:    # False => stream is probably offline
+                if self.stream_quality in streams.keys():
+                    self.stream_quality = StreamQualities.BEST.value
+                else:
+                    self.stream_quality = list(streams.keys())[-1]  # best not in streams? choose best effort quality
+            else:
+                self.kill = True
 
-        print(self.streamer + ' is live. Saving stream in ' +
-              self.stream_quality + ' quality to ' + dir + file_name + '.')
+            if not self.kill:
+                print('Invalid stream quality: ' + '\'' + temp_quality + '\'')
+                print('Falling back to default case: ' + self.stream_quality)
+                self.streamer_dict['preferred_quality'] = self.stream_quality
+                stream = streams[self.stream_quality]
 
-        try:
-            with open(dir + file_name, "ab") as out_file:  # open for [a]ppending as [b]inary
-                fd = stream.open()
+        if not self.kill:
+            print(self.streamer + ' is live. Saving stream in ' +
+                  self.stream_quality + ' quality to ' + dir + file_name + '.')
 
-                while not self.kill:
-                    data = fd.read(1024)
+            try:
+                with open(dir + file_name, "ab") as out_file:  # open for [a]ppending as [b]inary
+                    fd = stream.open()
 
-                    # If data is empty it's the end of stream
-                    if not data:
-                        fd.close()
-                        out_file.close()
-                        break
+                    while not self.kill:
+                        data = fd.read(1024)
 
-                    out_file.write(data)
-        except streamlink.StreamError as err:
-            print('StreamError: {0}'.format(err))  # TODO: test when this happens
-        except IOError as err:
-            # If file validation fails this error gets triggered.
-            print('Failed to write data to file: {0}'.format(err))
-        self.streamer_dict.update({'kill': self.kill})
-        return self.streamer_dict
+                        # If data is empty the stream has ended
+                        if not data:
+                            fd.close()
+                            out_file.close()
+                            break
+
+                        out_file.write(data)
+            except streamlink.StreamError as err:
+                print('StreamError: {0}'.format(err))  # TODO: test when this happens
+            except IOError as err:
+                # If file validation fails this error gets triggered.
+                print('Failed to write data to file: {0}'.format(err))
+            self.streamer_dict.update({'kill': self.kill})
+            return self.streamer_dict
