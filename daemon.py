@@ -3,6 +3,7 @@ from concurrent.futures import ThreadPoolExecutor
 from twitch import TwitchClient, constants as tc_const
 from utils import get_client_id, StreamQualities
 import threading
+import os
 
 
 class Daemon:
@@ -66,6 +67,15 @@ class Daemon:
     def _watch_streams(self):
         channel_ids = []
 
+        # TEST WORKAROUND: check if watched streamers are hosting
+        for streamer in self.watched_streamers.keys():
+            watched_streamer = self.watched_streamers[streamer]
+            watched_streamer_id = watched_streamer['streamer_dict']['user_info']['id']
+            watched_streamer_stream_info = \
+                self.CLIENT.streams.get_stream_by_user(watched_streamer_id, stream_type=tc_const.STREAM_TYPE_LIVE)
+            if not watched_streamer_stream_info:
+                watched_streamer['watcher'].clean_break()
+
         # get channel ids of all streamers
         for streamer in self.streamers.keys():
             channel_ids.append(self.streamers[streamer]['user_info']['id'])
@@ -118,8 +128,14 @@ class Daemon:
         streamer_dict = returned_watcher.result()
         streamer = streamer_dict['user_info']['name']
         kill = streamer_dict['kill']
+        cleanup = streamer_dict['cleanup']
         self.watched_streamers.pop(streamer)
-        print('Finished watching ' + streamer)
+        if not cleanup:
+            print('Finished watching ' + streamer)
+        else:
+            output_filepath = streamer_dict['output_filepath']
+            if os.path.exists(output_filepath):
+                os.remove(output_filepath)
         if not kill:
             self.add_streamer(streamer, streamer_dict['preferred_quality'])
 
@@ -139,7 +155,7 @@ if __name__ == '__main__':
     myDaemon.add_streamer('forsen')
     myDaemon.add_streamer('nani')
     myDaemon.add_streamer('nymn')
-    myDaemon.add_streamer('singsing')
+    myDaemon.add_streamer('bobross')
     myDaemon.start()
     myDaemon.get_streamers()
     print('abc')
