@@ -27,7 +27,7 @@ class Watcher:
 
     def watch(self):
         curr_time = datetime.datetime.now().strftime("%Y-%m-%d %H.%M.%S")
-        file_name = curr_time + " - " + self.streamer + " - " + get_valid_filename(self.stream_title) + ".flv"
+        file_name = curr_time + " - " + self.streamer + " - " + get_valid_filename(self.stream_title) + ".ts"
         dir = os.getcwd() + os.path.sep + self.streamer + os.path.sep
         if not os.path.exists(dir):
             os.makedirs(dir)
