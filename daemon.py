@@ -17,7 +17,7 @@ class Daemon:
     # mutable variables
     streamers = {}
     watched_streamers = {}
-    check_interval = 5
+    check_interval = 30
     watch_quality = StreamQualities.BEST.value
     kill = False
     started = False
