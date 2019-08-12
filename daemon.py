@@ -3,6 +3,7 @@ from concurrent.futures import ThreadPoolExecutor
 from twitch import TwitchClient, constants as tc_const
 from utils import get_client_id, StreamQualities
 import threading
+import time
 import os
 
 
@@ -16,7 +17,7 @@ class Daemon:
     # mutable variables
     streamers = {}
     watched_streamers = {}
-    check_interval = 30
+    check_interval = 5
     watch_quality = StreamQualities.BEST.value
     kill = False
     started = False
@@ -60,9 +61,24 @@ class Daemon:
     def start(self):
         if not self.started:
             print('Daemon is started. Will check every ' + str(self.check_interval) + ' seconds.')
-            self._watch_streams()
+            t = threading.Thread(target=self._watch_streams_loop)
+            t.start()
         else:
             print('Daemon is already running.')
+
+    def _watch_streams_loop(self):
+        while self.kill is False:
+            try:
+                self._watch_streams()
+            except Exception as e:
+                print('Daemon crashed: ' + str(e))
+                try:
+                    client_id = get_client_id()
+                    self.CLIENT = TwitchClient(client_id=client_id)
+                    print('Daemon recovered success.')
+                except Exception as e:
+                    print('Daemon retry error.')
+            time.sleep(self.check_interval)
 
     def _watch_streams(self):
         channel_ids = []
@@ -120,9 +136,6 @@ class Daemon:
             if not self.kill:
                 t = self.POOL.submit(curr_watcher.watch)
                 t.add_done_callback(self._watcher_callback)
-        if not self.kill:
-            t = threading.Timer(self.check_interval, self._watch_streams)
-            t.start()
 
     def _watcher_callback(self, returned_watcher):
         streamer_dict = returned_watcher.result()
