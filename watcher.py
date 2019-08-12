@@ -45,9 +45,9 @@ class Watcher:
                 else:
                     self.stream_quality = list(streams.keys())[-1]  # best not in streams? choose best effort quality
             else:
-                self.kill = True
+                self.cleanup = True
 
-            if not self.kill:
+            if not self.cleanup:
                 print('Invalid stream quality: ' + '\'' + temp_quality + '\'')
                 print('Falling back to default case: ' + self.stream_quality)
                 self.streamer_dict['preferred_quality'] = self.stream_quality
