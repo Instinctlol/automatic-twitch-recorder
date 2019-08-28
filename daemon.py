@@ -19,7 +19,7 @@ class Daemon:
     watched_streamers = {}
     check_interval = 30
     watch_quality = StreamQualities.BEST.value
-    kill = False
+    kill = False    # if True, no more Watchers will be started
     started = False
 
     def __init__(self):
@@ -67,18 +67,22 @@ class Daemon:
             print('Daemon is already running.')
 
     def _watch_streams_loop(self):
-        while self.kill is False:
+        while not self.kill:
             try:
                 self._watch_streams()
+                time.sleep(self.check_interval)
             except Exception as e:
                 print('Daemon crashed: ' + str(e))
-                try:
-                    client_id = get_client_id()
-                    self.CLIENT = TwitchClient(client_id=client_id)
-                    print('Daemon recovered success.')
-                except Exception as e:
-                    print('Daemon retry error.')
-            time.sleep(self.check_interval)
+                recovered = False
+                while not recovered:
+                    try:
+                        print('trying to recover...')
+                        # TODO: Watcher logic -> streamers
+                        print('Daemon successfully recovered.')
+                        recovered = True
+                    except Exception:
+                        print('Couldn\'t recover daemon, will retry in ' + str(self.check_interval) + ' seconds.')
+                        time.sleep(self.check_interval)
 
     def _watch_streams(self):
         channel_ids = []
