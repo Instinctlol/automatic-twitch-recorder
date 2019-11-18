@@ -1,31 +1,46 @@
-from watcher import Watcher
-from concurrent.futures import ThreadPoolExecutor
-from twitch import TwitchClient, constants as tc_const
-from utils import get_client_id, StreamQualities
-import threading
+import hmac
 import os
+import threading
+from concurrent.futures import ThreadPoolExecutor
+from http import HTTPStatus
+from http.server import BaseHTTPRequestHandler, HTTPServer
+import logging
+from urllib.parse import urlparse
+
+import requests
+from pyngrok import ngrok
+from twitch import TwitchClient, constants as tc_const
+
+from utils import get_client_id, StreamQualities
+from watcher import Watcher
+from events import TwitchStreamUpdate
 
 
 class Daemon:
-    # immutable variables
+    #
+    # CONSTANTS
+    #
     VALID_BROADCAST = ['live']  # 'rerun' can be added through commandline flags/options
-    CLIENT = None
-    # If max_workers is None or not given, it will default to the number of processors on the machine, multiplied by 5
-    POOL = ThreadPoolExecutor()
-
-    # mutable variables
-    streamers = {}
-    watched_streamers = {}
-    check_interval = 30
-    watch_quality = StreamQualities.BEST.value
-    kill = False
-    started = False
+    WEBHOOK_SECRET = 'automaticTwitchRecorder'
+    WEBHOOK_URL_PREFIX = 'https://api.twitch.tv/helix/streams?user_id='
+    PORT = 1234
+    LEASE_SECONDS = 864000  # 10 days = 864000
 
     def __init__(self):
-        client_id = get_client_id()
-        self.CLIENT = TwitchClient(client_id=client_id)
+        self.streamers = {}
+        self.watched_streamers = {}
+        self.check_interval = 30
+        self.client_id = get_client_id()
+        self.twitch_client = TwitchClient(client_id=self.client_id)
+        self.ngrok_url = ngrok.connect(port=self.PORT)
+        self.http_server = HTTPServer(('', self.PORT), _ATRHandler)  # FIXME: needs to run seperately
+        self.kill = False
+        self.started = False
+        # ThreadPoolExecutor(max_workers): If max_workers is None or not given, it will default to the number of
+        # processors on the machine, multiplied by 5
+        self.pool = ThreadPoolExecutor()
 
-    def add_streamer(self, streamer, quality=watch_quality):
+    def add_streamer(self, streamer, quality=StreamQualities.BEST.value):
         streamer_dict = {}
         qualities = [q.value for q in StreamQualities]
         if quality not in qualities:
@@ -35,7 +50,7 @@ class Daemon:
             streamer_dict.update({'preferred_quality': quality})
 
             # get channel id of streamer
-            user_info = self.CLIENT.users.translate_usernames_to_ids(streamer)
+            user_info = self.twitch_client.users.translate_usernames_to_ids(streamer)
 
             # check if user exists
             if user_info:
@@ -65,32 +80,36 @@ class Daemon:
             print('Daemon is already running.')
 
     def _watch_streams(self):
-        channel_ids = []
+        user_ids = []
 
         # TEST WORKAROUND: check if watched streamers are hosting
         for streamer in self.watched_streamers.keys():
             watched_streamer = self.watched_streamers[streamer]
             watched_streamer_id = watched_streamer['streamer_dict']['user_info']['id']
             watched_streamer_stream_info = \
-                self.CLIENT.streams.get_stream_by_user(watched_streamer_id, stream_type=tc_const.STREAM_TYPE_LIVE)
+                self.twitch_client.streams.get_stream_by_user(watched_streamer_id,
+                                                              stream_type=tc_const.STREAM_TYPE_LIVE)
             if not watched_streamer_stream_info:
                 watched_streamer['watcher'].clean_break()
 
         # get channel ids of all streamers
         for streamer in self.streamers.keys():
-            channel_ids.append(self.streamers[streamer]['user_info']['id'])
+            user_ids.append(self.streamers[streamer]['user_info']['id'])
 
         # better, but unreliable for some streams
         # e.g. Nani was playing unlisted game 'King of Retail' and it did not show up
-        # streams_info = self.CLIENT.streams.get_live_streams(channel_ids, tc_const.STREAM_TYPE_ALL)
+        # streams_info = self.CLIENT.streams.get_live_streams(user_ids, tc_const.STREAM_TYPE_ALL)
 
         streams_info = []
 
-        # request stream information for each channel id, response may be None
-        for channel_id in channel_ids:
+        for user_id in user_ids:
+            # register webhooks
+            self._post_webhook_request(user_id)
+
             # TODO: might change STREAM_TYPE in a later version?!
-            streams_info.append(
-                self.CLIENT.streams.get_stream_by_user(channel_id, stream_type=tc_const.STREAM_TYPE_LIVE))
+            # request stream information for each channel id, response may be None
+            response = self.twitch_client.streams.get_stream_by_user(user_id, stream_type=tc_const.STREAM_TYPE_LIVE)
+            streams_info.append(response)
 
         # save streaming information for all streamers, if it exists
         for stream_info in streams_info:
@@ -111,18 +130,22 @@ class Daemon:
             except KeyError:
                 pass
 
-        # start a watcher for every live streamer and reschedule _watch_streams()
-        for live_streamer in live_streamers:
-            live_streamer_dict = self.streamers.pop(live_streamer)
-            curr_watcher = Watcher(live_streamer_dict)
-            self.watched_streamers.update({live_streamer: {'watcher': curr_watcher,
-                                                           'streamer_dict': live_streamer_dict}})
-            if not self.kill:
-                t = self.POOL.submit(curr_watcher.watch)
-                t.add_done_callback(self._watcher_callback)
-        if not self.kill:
-            t = threading.Timer(self.check_interval, self._watch_streams)
-            t.start()
+        self._start_watchers(live_streamers)
+
+    def handle_twitch_stream_update_event(self, twitchstreamupdateevent):
+        print("HANDLE_TWITCH_STREAM_UPDATE: " + twitchstreamupdateevent.body)
+        print('abc')
+
+    def _start_watchers(self, live_streamers_list):
+        for live_streamer in live_streamers_list:
+            if live_streamer not in self.watched_streamers:
+                live_streamer_dict = self.streamers.pop(live_streamer)
+                curr_watcher = Watcher(live_streamer_dict)
+                self.watched_streamers.update({live_streamer: {'watcher': curr_watcher,
+                                                               'streamer_dict': live_streamer_dict}})
+                # if not self.kill:
+                #     t = self.pool.submit(curr_watcher.watch)
+                #     t.add_done_callback(self._watcher_callback)
 
     def _watcher_callback(self, returned_watcher):
         streamer_dict = returned_watcher.result()
@@ -147,11 +170,85 @@ class Daemon:
         for streamer in self.watched_streamers.values():
             watcher = streamer['watcher']
             watcher.quit()
-        self.POOL.shutdown()
+        self.pool.shutdown()
+        self.http_server.server_close()
+
+    def _post_webhook_request(self, user_id):
+        payload = {'hub.mode': 'subscribe',
+                   'hub.topic': self.WEBHOOK_URL_PREFIX + user_id,
+                   'hub.callback': self.ngrok_url,
+                   'hub.lease_seconds': self.LEASE_SECONDS,
+                   'hub.secret': self.WEBHOOK_SECRET
+                   }
+        auth = {'Client-ID': str(get_client_id())}
+        print('posting REQUEST, DATA: ' + str(payload))
+        requests.post('https://api.twitch.tv/helix/webhooks/hub', data=payload, headers=auth)
+
+
+class _ATRHandler(BaseHTTPRequestHandler):
+
+    def _set_response(self):
+        self.send_response(HTTPStatus.OK)
+        self.send_header('Content-type', 'text/html')
+        self.end_headers()
+
+    # send challenge back to twitch
+    def do_GET(self):
+        query = urlparse(self.path).query
+        logging.info("GET request,\nPath: %s\nHeaders:\n%s\n", str(self.path), str(self.headers))
+        get_instance().handle_twitch_stream_update_event(TwitchStreamUpdate("GET REQUEST:" + str(self.headers)))
+        try:
+            query_components = dict(qc.split("=") for qc in query.split("&"))
+            challenge = query_components["hub.challenge"]
+            # s = ''.join(x for x in challenge if x.isdigit())
+            # print(s)
+            # print(challenge)
+            self.send_response(HTTPStatus.OK)
+            self.end_headers()
+            self.wfile.write(bytes(challenge, "utf-8"))
+        except:
+            query_components = None
+            challenge = None
+            self._set_response()
+            self.wfile.write(bytes("Hello Stranger :)", "utf-8"))
+
+    def do_POST(self):
+        content_length = int(self.headers['Content-Length'])  # <--- Gets the size of data
+        post_data = self.rfile.read(content_length)  # <--- Gets the data itself
+        logging.info("POST request,\nPath: %s\nHeaders:\n%s\n\nBody:\n%s\n",
+                     str(self.path), str(self.headers), post_data.decode('utf-8'))
+        get_instance().handle_twitch_stream_update_event(TwitchStreamUpdate(post_data.decode('utf-8')))
+        if 'Content-Type' in self.headers:
+            content_type = str(self.headers['Content-Type'])
+        else:
+            raise ValueError("not all headers supplied.")
+        if 'X-Hub-Signature' in self.headers:
+            hub_signature = str(self.headers['X-Hub-Signature'])
+            algorithm, hashval = hub_signature.split('=')
+            print(hashval)
+            print(algorithm)
+            if post_data and algorithm and hashval:
+                gg = hmac.new(Daemon.WEBHOOK_SECRET.encode(), post_data, algorithm)
+                if not hmac.compare_digest(hashval.encode(), gg.hexdigest().encode()):
+                    raise ConnectionError("Hash missmatch.")
+        else:
+            raise ValueError("not all headers supplied.")
+        self._set_response()
+        self.wfile.write("POST request for {}".format(self.path).encode('utf-8'))
+
+
+INSTANCE = None
+
+
+def get_instance():
+    global INSTANCE
+    if INSTANCE is None:
+        INSTANCE = Daemon()
+    return INSTANCE
 
 
 if __name__ == '__main__':
-    myDaemon = Daemon()
+    myDaemon = get_instance()
     myDaemon.add_streamer('forsen')
     myDaemon.add_streamer('nani')
     myDaemon.add_streamer('nymn')
