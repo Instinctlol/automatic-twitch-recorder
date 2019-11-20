@@ -2,6 +2,11 @@ from pyngrok import ngrok
 import requests
 import utils
 
+payload = {'cmd': 'exit',
+           'args': []
+           }
+r = requests.post('http://127.0.0.1:8921/cmd/', data=payload)
+
 # rocketbeans https://api.twitch.tv/helix/streams?user_id=47627824
 # forsen https://api.twitch.tv/helix/streams?user_id=22484632
 # nani https://api.twitch.tv/helix/streams?user_id=93031467
@@ -15,7 +20,7 @@ secret = 'automaticTwitchRecorder'
 
 payload = {'hub.mode': 'subscribe',
            'hub.topic': topic,
-           'hub.callback': ngrok_url,
+           'hub.callback': ngrok_url+'/webhooks/',
            'hub.lease_seconds': lease_seconds,
            'hub.secret': secret
            }

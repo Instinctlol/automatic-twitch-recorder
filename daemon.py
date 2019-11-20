@@ -198,6 +198,7 @@ class Daemon(HTTPServer):
 
 
 class _ATRHandler(BaseHTTPRequestHandler):
+    daemon = None
 
     def __init__(self, request, client_address, server):
         super().__init__(request, client_address, server)
@@ -212,7 +213,7 @@ class _ATRHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         query = urlparse(self.path).query
         logging.info("GET request,\nPath: %s\nHeaders:\n%s\n", str(self.path), str(self.headers))
-        self.daemon.handle_twitch_stream_update_event(TwitchStreamUpdate("GET REQUEST:" + str(self.headers)))
+        # self.daemon.handle_twitch_stream_update_event(TwitchStreamUpdate("GET REQUEST:" + str(self.headers)))
         try:
             query_components = dict(qc.split("=") for qc in query.split("&"))
             challenge = query_components["hub.challenge"]
@@ -230,30 +231,37 @@ class _ATRHandler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         content_length = int(self.headers['Content-Length'])  # <--- Gets the size of data
-        post_data = self.rfile.read(content_length)  # <--- Gets the data itself
+        post_data = self.rfile.read(content_length).decode()  # <--- Gets the data itself
         logging.info("POST request,\nPath: %s\nHeaders:\n%s\n\nBody:\n%s\n",
-                     str(self.path), str(self.headers), post_data.decode('utf-8'))
-        self.daemon.handle_twitch_stream_update_event(TwitchStreamUpdate(post_data.decode('utf-8')))
-        if 'Content-Type' in self.headers:
-            content_type = str(self.headers['Content-Type'])
+                     str(self.path), str(self.headers), post_data)
+
+        if self.path == '/cmd/':
+            logging.info('successful cmd!')
+            self._set_response()
+            self.wfile.write("POST request for {}".format(self.path).encode('utf-8'))
         else:
-            raise ValueError("not all headers supplied.")
-        if 'X-Hub-Signature' in self.headers:
-            hub_signature = str(self.headers['X-Hub-Signature'])
-            algorithm, hashval = hub_signature.split('=')
-            print(hashval)
-            print(algorithm)
-            if post_data and algorithm and hashval:
-                gg = hmac.new(Daemon.WEBHOOK_SECRET.encode(), post_data, algorithm)
-                if not hmac.compare_digest(hashval.encode(), gg.hexdigest().encode()):
-                    raise ConnectionError("Hash missmatch.")
-        else:
-            raise ValueError("not all headers supplied.")
-        self._set_response()
-        self.wfile.write("POST request for {}".format(self.path).encode('utf-8'))
+            # self.daemon.handle_twitch_stream_update_event(TwitchStreamUpdate(post_data.decode('utf-8')))
+            if 'Content-Type' in self.headers:
+                content_type = str(self.headers['Content-Type'])
+            else:
+                raise ValueError("not all headers supplied.")
+            if 'X-Hub-Signature' in self.headers:
+                hub_signature = str(self.headers['X-Hub-Signature'])
+                algorithm, hashval = hub_signature.split('=')
+                print(hashval)
+                print(algorithm)
+                if post_data and algorithm and hashval:
+                    gg = hmac.new(Daemon.WEBHOOK_SECRET.encode(), post_data, algorithm)
+                    if not hmac.compare_digest(hashval.encode(), gg.hexdigest().encode()):
+                        raise ConnectionError("Hash missmatch.")
+            else:
+                raise ValueError("not all headers supplied.")
+            self._set_response()
+            self.wfile.write("POST request for {}".format(self.path).encode('utf-8'))
 
 
 if __name__ == '__main__':
+    logging.basicConfig(level=logging.INFO)
     server = Daemon(('127.0.0.1', 8921), _ATRHandler)
     server.add_streamer('forsen')
     try:
