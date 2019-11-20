@@ -16,7 +16,7 @@ from watcher import Watcher
 from events import TwitchStreamUpdate
 
 
-class Daemon:
+class Daemon(HTTPServer):
     #
     # CONSTANTS
     #
@@ -26,14 +26,14 @@ class Daemon:
     PORT = 1234
     LEASE_SECONDS = 864000  # 10 days = 864000
 
-    def __init__(self):
+    def __init__(self, server_address, RequestHandlerClass):
+        super().__init__(server_address, RequestHandlerClass)
         self.streamers = {}
         self.watched_streamers = {}
         self.check_interval = 30
         self.client_id = get_client_id()
         self.twitch_client = TwitchClient(client_id=self.client_id)
         self.ngrok_url = ngrok.connect(port=self.PORT)
-        self.http_server = HTTPServer(('', self.PORT), _ATRHandler)  # FIXME: needs to run seperately
         self.kill = False
         self.started = False
         # ThreadPoolExecutor(max_workers): If max_workers is None or not given, it will default to the number of
@@ -171,7 +171,7 @@ class Daemon:
             watcher = streamer['watcher']
             watcher.quit()
         self.pool.shutdown()
-        self.http_server.server_close()
+        self.server_close()
 
     def _post_webhook_request(self, user_id):
         payload = {'hub.mode': 'subscribe',
@@ -184,8 +184,24 @@ class Daemon:
         print('posting REQUEST, DATA: ' + str(payload))
         requests.post('https://api.twitch.tv/helix/webhooks/hub', data=payload, headers=auth)
 
+    # def verify_request(self, request, client_address):
+    #     print('verify_request', request, client_address)
+    #     return socketserver.TCPServer.verify_request(self, request, client_address)
+    #
+    # def process_request(self, request, client_address):
+    #     print('process_request', request, client_address)
+    #     return socketserver.TCPServer.process_request(self, request, client_address)
+    #
+    # def finish_request(self, request, client_address):
+    #     print('finish_request', request, client_address)
+    #     return socketserver.TCPServer.finish_request(self, request, client_address)
+
 
 class _ATRHandler(BaseHTTPRequestHandler):
+
+    def __init__(self, request, client_address, server):
+        super().__init__(request, client_address, server)
+        self.daemon = server
 
     def _set_response(self):
         self.send_response(HTTPStatus.OK)
@@ -196,7 +212,7 @@ class _ATRHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         query = urlparse(self.path).query
         logging.info("GET request,\nPath: %s\nHeaders:\n%s\n", str(self.path), str(self.headers))
-        get_instance().handle_twitch_stream_update_event(TwitchStreamUpdate("GET REQUEST:" + str(self.headers)))
+        self.daemon.handle_twitch_stream_update_event(TwitchStreamUpdate("GET REQUEST:" + str(self.headers)))
         try:
             query_components = dict(qc.split("=") for qc in query.split("&"))
             challenge = query_components["hub.challenge"]
@@ -217,7 +233,7 @@ class _ATRHandler(BaseHTTPRequestHandler):
         post_data = self.rfile.read(content_length)  # <--- Gets the data itself
         logging.info("POST request,\nPath: %s\nHeaders:\n%s\n\nBody:\n%s\n",
                      str(self.path), str(self.headers), post_data.decode('utf-8'))
-        get_instance().handle_twitch_stream_update_event(TwitchStreamUpdate(post_data.decode('utf-8')))
+        self.daemon.handle_twitch_stream_update_event(TwitchStreamUpdate(post_data.decode('utf-8')))
         if 'Content-Type' in self.headers:
             content_type = str(self.headers['Content-Type'])
         else:
@@ -237,22 +253,21 @@ class _ATRHandler(BaseHTTPRequestHandler):
         self.wfile.write("POST request for {}".format(self.path).encode('utf-8'))
 
 
-INSTANCE = None
-
-
-def get_instance():
-    global INSTANCE
-    if INSTANCE is None:
-        INSTANCE = Daemon()
-    return INSTANCE
-
-
 if __name__ == '__main__':
-    myDaemon = get_instance()
-    myDaemon.add_streamer('forsen')
-    myDaemon.add_streamer('nani')
-    myDaemon.add_streamer('nymn')
-    myDaemon.add_streamer('bobross')
-    myDaemon.start()
-    myDaemon.get_streamers()
-    print('abc')
+    server = Daemon(('127.0.0.1', 8921), _ATRHandler)
+    server.add_streamer('forsen')
+    try:
+        server.serve_forever()
+    except KeyboardInterrupt:
+        pass
+    finally:
+        server.exit()
+
+    # myDaemon = get_instance()
+    # myDaemon.add_streamer('forsen')
+    # myDaemon.add_streamer('nani')
+    # myDaemon.add_streamer('nymn')
+    # myDaemon.add_streamer('bobross')
+    # myDaemon.start()
+    # myDaemon.get_streamers()
+    print('exited gracefully')
