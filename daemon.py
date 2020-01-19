@@ -1,19 +1,15 @@
-import hmac
-import os
-import threading
-from concurrent.futures import ThreadPoolExecutor
-from http import HTTPStatus
-from http.server import BaseHTTPRequestHandler, HTTPServer
 import logging
-from urllib.parse import urlparse
+import os
+from concurrent.futures import ThreadPoolExecutor
+from http.server import HTTPServer
 
 import requests
 from pyngrok import ngrok
 from twitch import TwitchClient, constants as tc_const
 
+import ATRHandler
 from utils import get_client_id, StreamQualities
 from watcher import Watcher
-from events import TwitchStreamUpdate
 
 
 class Daemon(HTTPServer):
@@ -75,22 +71,23 @@ class Daemon(HTTPServer):
     def start(self):
         if not self.started:
             print('Daemon is started. Will check every ' + str(self.check_interval) + ' seconds.')
-            self._watch_streams()
+            self._check_streams()
+            self.started = True
         else:
             print('Daemon is already running.')
 
-    def _watch_streams(self):
+    def _check_streams(self):
         user_ids = []
 
         # TEST WORKAROUND: check if watched streamers are hosting
-        for streamer in self.watched_streamers.keys():
-            watched_streamer = self.watched_streamers[streamer]
-            watched_streamer_id = watched_streamer['streamer_dict']['user_info']['id']
-            watched_streamer_stream_info = \
-                self.twitch_client.streams.get_stream_by_user(watched_streamer_id,
-                                                              stream_type=tc_const.STREAM_TYPE_LIVE)
-            if not watched_streamer_stream_info:
-                watched_streamer['watcher'].clean_break()
+        # for streamer in self.watched_streamers.keys():
+        #     watched_streamer = self.watched_streamers[streamer]
+        #     watched_streamer_id = watched_streamer['streamer_dict']['user_info']['id']
+        #     watched_streamer_stream_info = \
+        #         self.twitch_client.streams.get_stream_by_user(watched_streamer_id,
+        #                                                       stream_type=tc_const.STREAM_TYPE_LIVE)
+        #     if not watched_streamer_stream_info:
+        #         watched_streamer['watcher'].clean_break()
 
         # get channel ids of all streamers
         for streamer in self.streamers.keys():
@@ -132,10 +129,6 @@ class Daemon(HTTPServer):
 
         self._start_watchers(live_streamers)
 
-    def handle_twitch_stream_update_event(self, twitchstreamupdateevent):
-        print("HANDLE_TWITCH_STREAM_UPDATE: " + twitchstreamupdateevent.body)
-        print('abc')
-
     def _start_watchers(self, live_streamers_list):
         for live_streamer in live_streamers_list:
             if live_streamer not in self.watched_streamers:
@@ -143,9 +136,6 @@ class Daemon(HTTPServer):
                 curr_watcher = Watcher(live_streamer_dict)
                 self.watched_streamers.update({live_streamer: {'watcher': curr_watcher,
                                                                'streamer_dict': live_streamer_dict}})
-                # if not self.kill:
-                #     t = self.pool.submit(curr_watcher.watch)
-                #     t.add_done_callback(self._watcher_callback)
 
     def _watcher_callback(self, returned_watcher):
         streamer_dict = returned_watcher.result()
@@ -197,73 +187,9 @@ class Daemon(HTTPServer):
     #     return socketserver.TCPServer.finish_request(self, request, client_address)
 
 
-class _ATRHandler(BaseHTTPRequestHandler):
-    daemon = None
-
-    def __init__(self, request, client_address, server):
-        super().__init__(request, client_address, server)
-        self.daemon = server
-
-    def _set_response(self):
-        self.send_response(HTTPStatus.OK)
-        self.send_header('Content-type', 'text/html')
-        self.end_headers()
-
-    # send challenge back to twitch
-    def do_GET(self):
-        query = urlparse(self.path).query
-        logging.info("GET request,\nPath: %s\nHeaders:\n%s\n", str(self.path), str(self.headers))
-        # self.daemon.handle_twitch_stream_update_event(TwitchStreamUpdate("GET REQUEST:" + str(self.headers)))
-        try:
-            query_components = dict(qc.split("=") for qc in query.split("&"))
-            challenge = query_components["hub.challenge"]
-            # s = ''.join(x for x in challenge if x.isdigit())
-            # print(s)
-            # print(challenge)
-            self.send_response(HTTPStatus.OK)
-            self.end_headers()
-            self.wfile.write(bytes(challenge, "utf-8"))
-        except:
-            query_components = None
-            challenge = None
-            self._set_response()
-            self.wfile.write(bytes("Hello Stranger :)", "utf-8"))
-
-    def do_POST(self):
-        content_length = int(self.headers['Content-Length'])  # <--- Gets the size of data
-        post_data = self.rfile.read(content_length).decode()  # <--- Gets the data itself
-        logging.info("POST request,\nPath: %s\nHeaders:\n%s\n\nBody:\n%s\n",
-                     str(self.path), str(self.headers), post_data)
-
-        if self.path == '/cmd/':
-            logging.info('successful cmd!')
-            self._set_response()
-            self.wfile.write("POST request for {}".format(self.path).encode('utf-8'))
-        else:
-            # self.daemon.handle_twitch_stream_update_event(TwitchStreamUpdate(post_data.decode('utf-8')))
-            if 'Content-Type' in self.headers:
-                content_type = str(self.headers['Content-Type'])
-            else:
-                raise ValueError("not all headers supplied.")
-            if 'X-Hub-Signature' in self.headers:
-                hub_signature = str(self.headers['X-Hub-Signature'])
-                algorithm, hashval = hub_signature.split('=')
-                print(hashval)
-                print(algorithm)
-                if post_data and algorithm and hashval:
-                    gg = hmac.new(Daemon.WEBHOOK_SECRET.encode(), post_data, algorithm)
-                    if not hmac.compare_digest(hashval.encode(), gg.hexdigest().encode()):
-                        raise ConnectionError("Hash missmatch.")
-            else:
-                raise ValueError("not all headers supplied.")
-            self._set_response()
-            self.wfile.write("POST request for {}".format(self.path).encode('utf-8'))
-
-
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)
-    server = Daemon(('127.0.0.1', 8921), _ATRHandler)
-    server.add_streamer('forsen')
+    server = Daemon(('127.0.0.1', 8924), ATRHandler.ATRHandler)
     try:
         server.serve_forever()
     except KeyboardInterrupt:

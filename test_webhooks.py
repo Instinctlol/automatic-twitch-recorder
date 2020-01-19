@@ -2,10 +2,10 @@ from pyngrok import ngrok
 import requests
 import utils
 
-payload = {'cmd': 'exit',
-           'args': []
+payload = {'cmd': 'add',
+           'args': ['nymn']
            }
-r = requests.post('http://127.0.0.1:8921/cmd/', data=payload)
+r = requests.post('http://127.0.0.1:8924/cmd/', json=payload)
 
 # rocketbeans https://api.twitch.tv/helix/streams?user_id=47627824
 # forsen https://api.twitch.tv/helix/streams?user_id=22484632
