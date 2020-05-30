@@ -1,5 +1,6 @@
 import logging
 import os
+import threading
 from concurrent.futures import ThreadPoolExecutor
 from http.server import HTTPServer
 
@@ -26,7 +27,6 @@ class Daemon(HTTPServer):
         super().__init__(server_address, RequestHandlerClass)
         self.streamers = {}
         self.watched_streamers = {}
-        self.check_interval = 30
         self.client_id = get_client_id()
         self.twitch_client = TwitchClient(client_id=self.client_id)
         self.ngrok_url = ngrok.connect(port=self.PORT)
@@ -38,10 +38,12 @@ class Daemon(HTTPServer):
 
     def add_streamer(self, streamer, quality=StreamQualities.BEST.value):
         streamer_dict = {}
+        resp = []
+        ok = False
         qualities = [q.value for q in StreamQualities]
         if quality not in qualities:
-            print('Invalid quality: ' + quality + '.')
-            print('Quality options: ' + str(qualities))
+            resp.append('Invalid quality: ' + quality + '.')
+            resp.append('Quality options: ' + str(qualities))
         else:
             streamer_dict.update({'preferred_quality': quality})
 
@@ -52,29 +54,30 @@ class Daemon(HTTPServer):
             if user_info:
                 streamer_dict.update({'user_info': user_info[0]})
                 self.streamers.update({streamer: streamer_dict})
-                print('Successfully added ' + streamer + ' to watchlist.')
+                resp.append('Successfully added ' + streamer + ' to watchlist.')
+                ok = True
             else:
-                print('Invalid streamer name: ' + streamer + '.')
+                resp.append('Invalid streamer name: ' + streamer + '.')
+        return ok, resp
 
     def remove_streamer(self, streamer):
-        # TODO: frickly. What if we are currently checking if streamer is online and we're removing it at the same time?
         if streamer in self.streamers.keys():
             self.streamers.pop(streamer)
-            print('Removed ' + streamer + ' from watchlist.')
+            return True, 'Removed ' + streamer + ' from watchlist.'
         elif streamer in self.watched_streamers.keys():
             watcher = self.watched_streamers[streamer]['watcher']
             watcher.quit()
-            print('Removed ' + streamer + ' from watchlist.')
+            return True, 'Removed ' + streamer + ' from watchlist.'
         else:
-            print('Could not find ' + streamer + '. Already removed?')
+            return False, 'Could not find ' + streamer + '. Already removed?'
 
     def start(self):
         if not self.started:
-            print('Daemon is started. Will check every ' + str(self.check_interval) + ' seconds.')
             self._check_streams()
             self.started = True
+            return 'Daemon is started.'
         else:
-            print('Daemon is already running.')
+            return 'Daemon is already running.'
 
     def _check_streams(self):
         user_ids = []
@@ -162,6 +165,8 @@ class Daemon(HTTPServer):
             watcher.quit()
         self.pool.shutdown()
         self.server_close()
+        threading.Thread(target=self.shutdown, daemon=True).start()
+        return 'Daemon exited successfully'
 
     def _post_webhook_request(self, user_id):
         payload = {'hub.mode': 'subscribe',

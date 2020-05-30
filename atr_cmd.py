@@ -1,6 +1,7 @@
 import cmd
 import sys
-from daemon import Daemon
+
+import requests
 
 
 # TODO: https://stackoverflow.com/questions/37866403/python-cmd-module-resume-prompt-after-async-event
@@ -8,16 +9,27 @@ class AtrCmd(cmd.Cmd):
 
     daemon = None
 
+    def _send_cmd(self, cmd_payload):
+        r = requests.post('http://127.0.0.1:8924/cmd/', json=cmd_payload)
+        resp_json = r.json()
+        resp_ok = r.ok
+        print(resp_json.pop('println'))
+        return resp_ok, resp_json
+
+    def _create_payload(self, command, *args):
+        payload = {'cmd': command,
+                   'args': list(args)
+                   }
+        return payload
+
     def __init__(self):
-        self.daemon = Daemon()
+        # self.daemon = Daemon()
         super().__init__()
 
     def do_add(self, line):
         line = line.split(' ')
-        if len(line) > 1:
-            self.daemon.add_streamer(line[0], line[1])
-        else:
-            self.daemon.add_streamer(line[0])
+        payload = self._create_payload('add', *line)
+        self._send_cmd(payload)
 
     def help_add(self):
         print('\n'.join([
@@ -27,7 +39,8 @@ class AtrCmd(cmd.Cmd):
         ]))
 
     def do_remove(self, line):
-        self.daemon.remove_streamer(line)
+        payload = self._create_payload('remove', line)
+        self._send_cmd(payload)
 
     def help_remove(self):
         print('\n'.join([
@@ -36,9 +49,8 @@ class AtrCmd(cmd.Cmd):
         ]))
 
     def do_list(self, line):
-        live, offline = self.daemon.get_streamers()
-        print('Live: ' + str(live))
-        print('Offline: ' + str(offline))
+        payload = self._create_payload('list')
+        self._send_cmd(payload)
 
     def help_list(self):
         print('\n'.join([
@@ -47,7 +59,8 @@ class AtrCmd(cmd.Cmd):
         ]))
 
     def do_start(self, line):
-        self.daemon.start()
+        payload = self._create_payload('start')
+        self._send_cmd(payload)
 
     def help_start(self):
         print('\n'.join([
@@ -55,28 +68,28 @@ class AtrCmd(cmd.Cmd):
             'Starts the configured daemon. You may still configure it further while it is running.',
         ]))
 
-    def do_time(self, line):
-        try:
-            self.daemon.check_interval = int(line)
-            print('Changed check interval to: ' + line + ' seconds.')
-        except ValueError:
-            print('\''+line+'\' is not valid.')
-
-    def help_time(self):
-        print('\n'.join([
-            'time seconds',
-            'Configures the check interval in seconds.',
-            'Please do not make it too low and stay above 10 seconds.',
-            'Default check interval: 30 seconds.',
-        ]))
+    # def do_time(self, line):
+    #     try:
+    #         self.daemon.check_interval = int(line)
+    #         print('Changed check interval to: ' + line + ' seconds.')
+    #     except ValueError:
+    #         print('\''+line+'\' is not valid.')
+    #
+    # def help_time(self):
+    #     print('\n'.join([
+    #         'time seconds',
+    #         'Configures the check interval in seconds.',
+    #         'Please do not make it too low and stay above 10 seconds.',
+    #         'Default check interval: 30 seconds.',
+    #     ]))
 
     def do_EOF(self, line):
         self.do_exit(line)
         return True
 
     def do_exit(self, line):
-        print('exiting')
-        self.daemon.exit()
+        payload = self._create_payload('exit')
+        self._send_cmd(payload)
         sys.exit()
 
     def help_exit(self):
