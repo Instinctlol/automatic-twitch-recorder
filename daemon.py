@@ -20,11 +20,11 @@ class Daemon(HTTPServer):
     VALID_BROADCAST = ['live']  # 'rerun' can be added through commandline flags/options
     WEBHOOK_SECRET = 'automaticTwitchRecorder'
     WEBHOOK_URL_PREFIX = 'https://api.twitch.tv/helix/streams?user_id='
-    PORT = 1234
     LEASE_SECONDS = 864000  # 10 days = 864000
 
     def __init__(self, server_address, RequestHandlerClass):
         super().__init__(server_address, RequestHandlerClass)
+        self.PORT = server_address[1]
         self.streamers = {}
         self.watched_streamers = {}
         self.client_id = get_client_id()
