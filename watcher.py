@@ -14,9 +14,9 @@ class Watcher:
 
     def __init__(self, streamer_dict):
         self.streamer_dict = streamer_dict
-        self.streamer = self.streamer_dict['user_info']['name']
-        self.stream_title = self.streamer_dict['stream_info']['channel']['status']
-        # self.streamer = self.streamer_dict['display_name'] # TODO: any differences?
+        self.streamer = self.streamer_dict['user_info']['display_name']
+        self.streamer_login = self.streamer_dict['user_info']['login']
+        self.stream_title = self.streamer_dict['stream_info']['title']
         self.stream_quality = self.streamer_dict['preferred_quality']
 
     def quit(self):
@@ -28,13 +28,13 @@ class Watcher:
     def watch(self):
         curr_time = datetime.datetime.now().strftime("%Y-%m-%d %H.%M.%S")
         file_name = curr_time + " - " + self.streamer + " - " + get_valid_filename(self.stream_title) + ".ts"
-        dir = os.getcwd() + os.path.sep + self.streamer + os.path.sep
-        if not os.path.exists(dir):
-            os.makedirs(dir)
-        output_filepath = dir + file_name
+        directory = os.getcwd() + os.path.sep + self.streamer_login + os.path.sep
+        if not os.path.exists(directory):
+            os.makedirs(directory)
+        output_filepath = directory + file_name
         self.streamer_dict.update({'output_filepath': output_filepath})
 
-        streams = streamlink.streams(self.streamer_dict['stream_info']['channel']['url'])
+        streams = streamlink.streams('https://www.twitch.tv/' + self.streamer_login)
         try:
             stream = streams[self.stream_quality]
         except KeyError:

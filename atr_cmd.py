@@ -10,7 +10,7 @@ class AtrCmd(cmd.Cmd):
     daemon = None
 
     def _send_cmd(self, cmd_payload):
-        r = requests.post('http://127.0.0.1:8924/cmd/', json=cmd_payload)
+        r = requests.post('http://127.0.0.1:1234/cmd/', json=cmd_payload)
         resp_json = r.json()
         resp_ok = r.ok
         print(resp_json.pop('println'))

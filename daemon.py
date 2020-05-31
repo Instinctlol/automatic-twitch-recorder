@@ -3,13 +3,13 @@ import os
 import threading
 from concurrent.futures import ThreadPoolExecutor
 from http.server import HTTPServer
+import twitch
 
 import requests
 from pyngrok import ngrok
-from twitch import TwitchClient, constants as tc_const
 
 import ATRHandler
-from utils import get_client_id, StreamQualities, get_ngrok_auth_token
+from utils import get_client_id, StreamQualities, get_ngrok_auth_token, get_app_access_token
 from watcher import Watcher
 
 
@@ -25,10 +25,9 @@ class Daemon(HTTPServer):
     def __init__(self, server_address, RequestHandlerClass):
         super().__init__(server_address, RequestHandlerClass)
         self.PORT = server_address[1]
-        self.streamers = {}
-        self.watched_streamers = {}
+        self.streamers = {}  # holds all streamers that need to be surveilled
+        self.watched_streamers = {}  # holds all live streamers that are currently being recorded
         self.client_id = get_client_id()
-        self.twitch_client = TwitchClient(client_id=self.client_id)
         self.ngrok_url = ngrok.connect(port=self.PORT, auth_token=get_ngrok_auth_token())
         self.kill = False
         self.started = False
@@ -37,6 +36,7 @@ class Daemon(HTTPServer):
         self.pool = ThreadPoolExecutor()
 
     def add_streamer(self, streamer, quality=StreamQualities.BEST.value):
+        streamer = streamer.lower()
         streamer_dict = {}
         resp = []
         ok = False
@@ -48,7 +48,7 @@ class Daemon(HTTPServer):
             streamer_dict.update({'preferred_quality': quality})
 
             # get channel id of streamer
-            user_info = self.twitch_client.users.translate_usernames_to_ids(streamer)
+            user_info = list(twitch.get_user_info(streamer))
 
             # check if user exists
             if user_info:
@@ -61,6 +61,7 @@ class Daemon(HTTPServer):
         return ok, resp
 
     def remove_streamer(self, streamer):
+        streamer = streamer.lower()
         if streamer in self.streamers.keys():
             self.streamers.pop(streamer)
             return True, 'Removed ' + streamer + ' from watchlist.'
@@ -82,40 +83,20 @@ class Daemon(HTTPServer):
     def _check_streams(self):
         user_ids = []
 
-        # TEST WORKAROUND: check if watched streamers are hosting
-        # for streamer in self.watched_streamers.keys():
-        #     watched_streamer = self.watched_streamers[streamer]
-        #     watched_streamer_id = watched_streamer['streamer_dict']['user_info']['id']
-        #     watched_streamer_stream_info = \
-        #         self.twitch_client.streams.get_stream_by_user(watched_streamer_id,
-        #                                                       stream_type=tc_const.STREAM_TYPE_LIVE)
-        #     if not watched_streamer_stream_info:
-        #         watched_streamer['watcher'].clean_break()
-
         # get channel ids of all streamers
         for streamer in self.streamers.keys():
             user_ids.append(self.streamers[streamer]['user_info']['id'])
 
-        # better, but unreliable for some streams
-        # e.g. Nani was playing unlisted game 'King of Retail' and it did not show up
-        # streams_info = self.CLIENT.streams.get_live_streams(user_ids, tc_const.STREAM_TYPE_ALL)
-
-        streams_info = []
+        streams_info = twitch.get_stream_info(*user_ids)
 
         for user_id in user_ids:
             # register webhooks
             self._post_webhook_request(user_id)
 
-            # TODO: might change STREAM_TYPE in a later version?!
-            # request stream information for each channel id, response may be None
-            response = self.twitch_client.streams.get_stream_by_user(user_id, stream_type=tc_const.STREAM_TYPE_LIVE)
-            streams_info.append(response)
-
         # save streaming information for all streamers, if it exists
         for stream_info in streams_info:
-            if stream_info:
-                streamer_name = stream_info['channel']['name']
-                self.streamers[streamer_name].update({'stream_info': stream_info})
+            streamer_name = stream_info['user_name'].lower()
+            self.streamers[streamer_name].update({'stream_info': stream_info})
 
         live_streamers = []
 
@@ -123,10 +104,8 @@ class Daemon(HTTPServer):
         for streamer_info in self.streamers.values():
             try:
                 stream_info = streamer_info['stream_info']
-
-                if stream_info['broadcast_platform'] == tc_const.STREAM_TYPE_LIVE:
-                    live_streamers.append(stream_info['channel']['name'])
-                    # live_streamers.append(stream_info['channel']['display_name']) # TODO: any differences?
+                if stream_info['type'] == 'live':
+                    live_streamers.append(stream_info['user_name'].lower())
             except KeyError:
                 pass
 
@@ -139,10 +118,13 @@ class Daemon(HTTPServer):
                 curr_watcher = Watcher(live_streamer_dict)
                 self.watched_streamers.update({live_streamer: {'watcher': curr_watcher,
                                                                'streamer_dict': live_streamer_dict}})
+                if not self.kill:
+                    t = self.pool.submit(curr_watcher.watch)
+                    t.add_done_callback(self._watcher_callback)
 
     def _watcher_callback(self, returned_watcher):
         streamer_dict = returned_watcher.result()
-        streamer = streamer_dict['user_info']['name']
+        streamer = streamer_dict['user_info']['login']
         kill = streamer_dict['kill']
         cleanup = streamer_dict['cleanup']
         self.watched_streamers.pop(streamer)
@@ -171,12 +153,12 @@ class Daemon(HTTPServer):
     def _post_webhook_request(self, user_id):
         payload = {'hub.mode': 'subscribe',
                    'hub.topic': self.WEBHOOK_URL_PREFIX + user_id,
-                   'hub.callback': self.ngrok_url,
+                   'hub.callback': self.ngrok_url + '/webhooks/',
                    'hub.lease_seconds': self.LEASE_SECONDS,
                    'hub.secret': self.WEBHOOK_SECRET
                    }
-        auth = {'Client-ID': str(get_client_id())}
-        print('posting REQUEST, DATA: ' + str(payload))
+        auth = {'Client-ID': str(get_client_id()),
+                'Authorization': 'Bearer ' + get_app_access_token()}
         requests.post('https://api.twitch.tv/helix/webhooks/hub', data=payload, headers=auth)
 
     # def verify_request(self, request, client_address):
