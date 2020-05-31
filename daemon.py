@@ -9,7 +9,7 @@ from pyngrok import ngrok
 from twitch import TwitchClient, constants as tc_const
 
 import ATRHandler
-from utils import get_client_id, StreamQualities
+from utils import get_client_id, StreamQualities, get_ngrok_auth_token
 from watcher import Watcher
 
 
@@ -29,7 +29,7 @@ class Daemon(HTTPServer):
         self.watched_streamers = {}
         self.client_id = get_client_id()
         self.twitch_client = TwitchClient(client_id=self.client_id)
-        self.ngrok_url = ngrok.connect(port=self.PORT)
+        self.ngrok_url = ngrok.connect(port=self.PORT, auth_token=get_ngrok_auth_token())
         self.kill = False
         self.started = False
         # ThreadPoolExecutor(max_workers): If max_workers is None or not given, it will default to the number of
@@ -194,7 +194,7 @@ class Daemon(HTTPServer):
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)
-    server = Daemon(('127.0.0.1', 8924), ATRHandler.ATRHandler)
+    server = Daemon(('127.0.0.1', 1234), ATRHandler.ATRHandler)
     try:
         server.serve_forever()
     except KeyboardInterrupt:
