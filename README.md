@@ -1,4 +1,4 @@
-Check out the [webhooks](https://github.com/Instinctlol/automatic-twitch-recorder/tree/webhooks) branch for an updated version of this script.
+Check out the [webhooks](https://github.com/Instinctlol/automatic-twitch-recorder/tree/webhooks) branch for an updated version of this script (unfortunately there's bugs within streamlink).
 
 # automatic-twitch-recorder
 
