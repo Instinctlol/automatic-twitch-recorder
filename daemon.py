@@ -3,14 +3,14 @@ import os
 import threading
 from concurrent.futures import ThreadPoolExecutor
 from http.server import HTTPServer
-import twitch
-
-import requests
-# from pyngrok import ngrok
 
 import ATRHandler
-from utils import get_client_id, StreamQualities, get_ngrok_auth_token, get_app_access_token
+import twitch
+from utils import get_client_id, StreamQualities
 from watcher import Watcher
+
+
+# from pyngrok import ngrok
 
 
 class Daemon(HTTPServer):
@@ -82,6 +82,8 @@ class Daemon(HTTPServer):
             return 'Daemon is already running.'
 
     def set_interval(self, secs):
+        if secs < 1:
+            secs = 1
         self.check_interval = secs
         return 'Interval is now set to ' + str(secs) + ' seconds.'
 
