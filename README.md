@@ -5,8 +5,7 @@ Checks if a user on twitch is currently streaming and then records the stream vi
 ## Dependencies:
 
 - streamlink (https://streamlink.github.io)
-- python-twitch-client (https://github.com/tsifrer/python-twitch-client)
-- python (https://www.python.org/)
+- python3 (https://www.python.org/) (I use [python3.6](https://www.python.org/downloads/release/python-368/) for windows)
 
 ## Installation:
 
@@ -23,7 +22,7 @@ Checks if a user on twitch is currently streaming and then records the stream vi
 - in your cmd/terminal, run `python atr_cmd.py`
 - type `help`
   - `add streamer [quality]`: adds the streamer you want to record in given optional quality, e.g. `add forsen`. Default quality: `best`, quality options: `1080p60, 1080p, 720p60, 720p, 480p, 360p, 160p, audio_only`
-  - `time 30`: sets check interval in seconds, please don't go below `10`
+  - `time 10`: sets check interval in seconds
   - `remove streamer`: removes streamer, also stops recording this streamer
   - `start`: starts checking for / recording all added streamers
   - `list`: prints all added streamers
@@ -38,19 +37,9 @@ $ start
 ```
 
 
-### Outdated:
-
-check.py is not supported anymore, it's only included for legacy purposes and may be removed at a later point in time.
-
-- ~~in your cmd/terminal, run `python check.py [options] [user]`~~
-  - ~~[time] is measured in seconds, e.g. '30' for 30 seconds~~
-  - ~~[user] is the user you want to record, e.g. 'forsen'~~
-  - ~~[quality] is the stream quality you want to record, 'best' is default. Refer to [streamlink documentation](https://streamlink.github.io/) for more info.~~
-- ~~call `python check.py --help` for a detailed description.~~
-
-
 ## Bugs:
 
+- Adding a streamer that is live, starting the daemon and then adding another streamer will result in TypeError errors in streamlink module.
 - CLI shenanigans
     - text will get printed into the prompt / user input. However, your input will still be valid, so do not worry. This does not restrict the functionality of this application.
     - There's an open [stackoverflow question](https://stackoverflow.com/questions/57027294/cmd-module-async-job-prints-are-overwriting-prompt-input) for this. Any volunteers?
