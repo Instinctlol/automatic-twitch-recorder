@@ -1,3 +1,5 @@
+Check out the [webhooks](https://github.com/Instinctlol/automatic-twitch-recorder/tree/webhooks) branch for an updated version of this script.
+
 # automatic-twitch-recorder
 
 Checks if a user on twitch is currently streaming and then records the stream via streamlink
