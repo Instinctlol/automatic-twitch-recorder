@@ -20,6 +20,10 @@ class ATRHandler(BaseHTTPRequestHandler):
     message = {}
     ok = False
 
+    # comment this out when developing :)
+    def log_message(self, format, *args):
+        return
+
     def _set_response(self, msg=None):
         self.send_response(HTTPStatus.OK, msg)
         self.send_header('Content-type', 'text/html')
@@ -123,7 +127,7 @@ class ATRHandler(BaseHTTPRequestHandler):
             'list': self.cmd_list,
             'remove': self.cmd_remove,
             'add': self.cmd_add,
-            # 'time': self.cmd_time,
+            'time': self.cmd_time,
         }
         func = cmd_executor[post_data['cmd']]
         if len(post_data['args']) > 0:
@@ -166,11 +170,10 @@ class ATRHandler(BaseHTTPRequestHandler):
 
         self.message['println'] = '\n'.join(resp)
 
-    # def cmd_time(self, args):
-    #     try:
-    #         self.server.check_interval = int(args[0])
-    #         self.ok = True
-    #         self.message['println'] = 'Interval successfully set.'
-    #     except ValueError:
-    #         self.ok = False
-    #         self.message['println'] = '\'' + args[0] + '\' is not valid.'
+    def cmd_time(self, args):
+        try:
+            self.message['println'] = self.server.set_interval(int(args[0]))
+            self.ok = True
+        except ValueError:
+            self.ok = False
+            self.message['println'] = '\'' + args[0] + '\' is not valid.'

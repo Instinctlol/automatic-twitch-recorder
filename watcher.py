@@ -35,6 +35,20 @@ class Watcher:
         self.streamer_dict.update({'output_filepath': output_filepath})
 
         streams = streamlink.streams('https://www.twitch.tv/' + self.streamer_login)
+        # Occurs when already recording another stream and new streamer (that is already live) is added
+        # not sure why this error is thrown..
+        # Traceback (most recent call last):
+        #   File "C:\Program Files\Python36\lib\threading.py", line 916, in _bootstrap_inner
+        #     self.run()
+        #   File "E:\Downloads\automatic-twitch-recorder\venv\lib\site-packages\streamlink\stream\segmented.py", line 59, in run
+        #     for segment in self.iter_segments():
+        #   File "E:\Downloads\automatic-twitch-recorder\venv\lib\site-packages\streamlink\stream\hls.py", line 307, in iter_segments
+        #     self.reload_playlist()
+        #   File "E:\Downloads\automatic-twitch-recorder\venv\lib\site-packages\streamlink\stream\hls.py", line 235, in reload_playlist
+        #     self.process_sequences(playlist, sequences)
+        #   File "E:\Downloads\automatic-twitch-recorder\venv\lib\site-packages\streamlink\plugins\twitch.py", line 210, in process_sequences
+        #     return super(TwitchHLSStreamWorker, self).process_sequences(playlist, sequences)
+        # TypeError: super(type, obj): obj must be an instance or subtype of type
         try:
             stream = streams[self.stream_quality]
         except KeyError:

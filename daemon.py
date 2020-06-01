@@ -6,7 +6,7 @@ from http.server import HTTPServer
 import twitch
 
 import requests
-from pyngrok import ngrok
+# from pyngrok import ngrok
 
 import ATRHandler
 from utils import get_client_id, StreamQualities, get_ngrok_auth_token, get_app_access_token
@@ -21,6 +21,7 @@ class Daemon(HTTPServer):
     WEBHOOK_SECRET = 'automaticTwitchRecorder'
     WEBHOOK_URL_PREFIX = 'https://api.twitch.tv/helix/streams?user_id='
     LEASE_SECONDS = 864000  # 10 days = 864000
+    check_interval = 10
 
     def __init__(self, server_address, RequestHandlerClass):
         super().__init__(server_address, RequestHandlerClass)
@@ -28,7 +29,7 @@ class Daemon(HTTPServer):
         self.streamers = {}  # holds all streamers that need to be surveilled
         self.watched_streamers = {}  # holds all live streamers that are currently being recorded
         self.client_id = get_client_id()
-        self.ngrok_url = ngrok.connect(port=self.PORT, auth_token=get_ngrok_auth_token())
+        # self.ngrok_url = ngrok.connect(port=self.PORT, auth_token=get_ngrok_auth_token())
         self.kill = False
         self.started = False
         # ThreadPoolExecutor(max_workers): If max_workers is None or not given, it will default to the number of
@@ -80,6 +81,10 @@ class Daemon(HTTPServer):
         else:
             return 'Daemon is already running.'
 
+    def set_interval(self, secs):
+        self.check_interval = secs
+        return 'Interval is now set to ' + str(secs) + ' seconds.'
+
     def _check_streams(self):
         user_ids = []
 
@@ -87,29 +92,34 @@ class Daemon(HTTPServer):
         for streamer in self.streamers.keys():
             user_ids.append(self.streamers[streamer]['user_info']['id'])
 
-        streams_info = twitch.get_stream_info(*user_ids)
+        if user_ids:
+            streams_info = twitch.get_stream_info(*user_ids)
 
-        for user_id in user_ids:
-            # register webhooks
-            self._post_webhook_request(user_id)
+            # for user_id in user_ids:
+            #     # register webhooks
+            #     self._post_webhook_request(user_id)
 
-        # save streaming information for all streamers, if it exists
-        for stream_info in streams_info:
-            streamer_name = stream_info['user_name'].lower()
-            self.streamers[streamer_name].update({'stream_info': stream_info})
+            # save streaming information for all streamers, if it exists
+            for stream_info in streams_info:
+                streamer_name = stream_info['user_name'].lower()
+                self.streamers[streamer_name].update({'stream_info': stream_info})
 
-        live_streamers = []
+            live_streamers = []
 
-        # check which streamers are live
-        for streamer_info in self.streamers.values():
-            try:
-                stream_info = streamer_info['stream_info']
-                if stream_info['type'] == 'live':
-                    live_streamers.append(stream_info['user_name'].lower())
-            except KeyError:
-                pass
+            # check which streamers are live
+            for streamer_info in self.streamers.values():
+                try:
+                    stream_info = streamer_info['stream_info']
+                    if stream_info['type'] == 'live':
+                        live_streamers.append(stream_info['user_name'].lower())
+                except KeyError:
+                    pass
 
-        self._start_watchers(live_streamers)
+            self._start_watchers(live_streamers)
+
+        if not self.kill:
+            t = threading.Timer(self.check_interval, self._check_streams)
+            t.start()
 
     def _start_watchers(self, live_streamers_list):
         for live_streamer in live_streamers_list:
@@ -150,28 +160,16 @@ class Daemon(HTTPServer):
         threading.Thread(target=self.shutdown, daemon=True).start()
         return 'Daemon exited successfully'
 
-    def _post_webhook_request(self, user_id):
-        payload = {'hub.mode': 'subscribe',
-                   'hub.topic': self.WEBHOOK_URL_PREFIX + user_id,
-                   'hub.callback': self.ngrok_url + '/webhooks/',
-                   'hub.lease_seconds': self.LEASE_SECONDS,
-                   'hub.secret': self.WEBHOOK_SECRET
-                   }
-        auth = {'Client-ID': str(get_client_id()),
-                'Authorization': 'Bearer ' + get_app_access_token()}
-        requests.post('https://api.twitch.tv/helix/webhooks/hub', data=payload, headers=auth)
-
-    # def verify_request(self, request, client_address):
-    #     print('verify_request', request, client_address)
-    #     return socketserver.TCPServer.verify_request(self, request, client_address)
-    #
-    # def process_request(self, request, client_address):
-    #     print('process_request', request, client_address)
-    #     return socketserver.TCPServer.process_request(self, request, client_address)
-    #
-    # def finish_request(self, request, client_address):
-    #     print('finish_request', request, client_address)
-    #     return socketserver.TCPServer.finish_request(self, request, client_address)
+    # def _post_webhook_request(self, user_id):
+    #     payload = {'hub.mode': 'subscribe',
+    #                'hub.topic': self.WEBHOOK_URL_PREFIX + user_id,
+    #                'hub.callback': self.ngrok_url + '/webhooks/',
+    #                'hub.lease_seconds': self.LEASE_SECONDS,
+    #                'hub.secret': self.WEBHOOK_SECRET
+    #                }
+    #     auth = {'Client-ID': str(get_client_id()),
+    #             'Authorization': 'Bearer ' + get_app_access_token()}
+    #     requests.post('https://api.twitch.tv/helix/webhooks/hub', data=payload, headers=auth)
 
 
 if __name__ == '__main__':

@@ -7,8 +7,6 @@ import requests
 # TODO: https://stackoverflow.com/questions/37866403/python-cmd-module-resume-prompt-after-async-event
 class AtrCmd(cmd.Cmd):
 
-    daemon = None
-
     def _send_cmd(self, cmd_payload):
         r = requests.post('http://127.0.0.1:1234/cmd/', json=cmd_payload)
         resp_json = r.json()
@@ -68,20 +66,20 @@ class AtrCmd(cmd.Cmd):
             'Starts the configured daemon. You may still configure it further while it is running.',
         ]))
 
-    # def do_time(self, line):
-    #     try:
-    #         self.daemon.check_interval = int(line)
-    #         print('Changed check interval to: ' + line + ' seconds.')
-    #     except ValueError:
-    #         print('\''+line+'\' is not valid.')
-    #
-    # def help_time(self):
-    #     print('\n'.join([
-    #         'time seconds',
-    #         'Configures the check interval in seconds.',
-    #         'Please do not make it too low and stay above 10 seconds.',
-    #         'Default check interval: 30 seconds.',
-    #     ]))
+    def do_time(self, line):
+        try:
+            payload = self._create_payload('time', line)
+            self._send_cmd(payload)
+        except ValueError:
+            print('\''+line+'\' is not valid.')
+
+    def help_time(self):
+        print('\n'.join([
+            'time seconds',
+            'Configures the check interval in seconds.',
+            'It\'s advised not to make it too low and to stay above 10 seconds.',
+            'Default check interval: 30 seconds.',
+        ]))
 
     def do_EOF(self, line):
         self.do_exit(line)
