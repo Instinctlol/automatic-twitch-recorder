@@ -27,6 +27,7 @@ Checks if a user on twitch is currently streaming and then records the stream vi
   - `start`: starts checking for / recording all added streamers
   - `list`: prints all added streamers
   - `exit`: stops the application and all currently running recordings
+  - `download_folder path`: sets the download folder for saving the recordings. (#streamer# will be replaced with the name of the streamer)
 
 Example inputs to record forsen and nymn (this will also repeatedly check if they are online):
 

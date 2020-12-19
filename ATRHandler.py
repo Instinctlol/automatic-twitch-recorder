@@ -128,6 +128,7 @@ class ATRHandler(BaseHTTPRequestHandler):
             'remove': self.cmd_remove,
             'add': self.cmd_add,
             'time': self.cmd_time,
+            'download_folder': self.cmd_download_folder,
         }
         func = cmd_executor[post_data['cmd']]
         if len(post_data['args']) > 0:
@@ -173,6 +174,14 @@ class ATRHandler(BaseHTTPRequestHandler):
     def cmd_time(self, args):
         try:
             self.message['println'] = self.server.set_interval(int(args[0]))
+            self.ok = True
+        except ValueError:
+            self.ok = False
+            self.message['println'] = '\'' + args[0] + '\' is not valid.'
+    
+    def cmd_download_folder(self, args):
+        try:
+            self.message['println'] = self.server.set_download_folder(str(args[0]).strip())
             self.ok = True
         except ValueError:
             self.ok = False

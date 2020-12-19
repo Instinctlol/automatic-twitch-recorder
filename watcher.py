@@ -12,12 +12,13 @@ class Watcher:
     kill = False
     cleanup = False
 
-    def __init__(self, streamer_dict):
+    def __init__(self, streamer_dict, download_folder):
         self.streamer_dict = streamer_dict
         self.streamer = self.streamer_dict['user_info']['display_name']
         self.streamer_login = self.streamer_dict['user_info']['login']
         self.stream_title = self.streamer_dict['stream_info']['title']
         self.stream_quality = self.streamer_dict['preferred_quality']
+        self.download_folder = download_folder
 
     def quit(self):
         self.kill = True
@@ -28,7 +29,7 @@ class Watcher:
     def watch(self):
         curr_time = datetime.datetime.now().strftime("%Y-%m-%d %H.%M.%S")
         file_name = curr_time + " - " + self.streamer + " - " + get_valid_filename(self.stream_title) + ".ts"
-        directory = os.getcwd() + os.path.sep + self.streamer_login + os.path.sep
+        directory = self._formatted_download_folder(self.streamer_login) + os.path.sep
         if not os.path.exists(directory):
             os.makedirs(directory)
         output_filepath = directory + file_name
@@ -95,3 +96,6 @@ class Watcher:
             self.streamer_dict.update({'kill': self.kill})
             self.streamer_dict.update({'cleanup': self.cleanup})
             return self.streamer_dict
+
+    def _formatted_download_folder(self, streamer):
+        return self.download_folder.replace('#streamer#', streamer)

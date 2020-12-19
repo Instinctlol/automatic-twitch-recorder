@@ -21,7 +21,6 @@ class AtrCmd(cmd.Cmd):
         return payload
 
     def __init__(self):
-        # self.daemon = Daemon()
         super().__init__()
 
     def do_add(self, line):
@@ -79,6 +78,16 @@ class AtrCmd(cmd.Cmd):
             'Configures the check interval in seconds.',
             'It\'s advised not to make it too low and to stay above 10 seconds.',
             'Default check interval: 30 seconds.',
+        ]))
+
+    def do_download_folder(self, line):
+        payload = self._create_payload('download_folder', line)
+        self._send_cmd(payload)
+
+    def help_download_folder(self):
+        print('\n'.join([
+            'download_folder path',
+            'Configures the download folder for saving the videos.',
         ]))
 
     def do_EOF(self, line):
