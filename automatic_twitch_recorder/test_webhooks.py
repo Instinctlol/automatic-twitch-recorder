@@ -1,7 +1,7 @@
 from pyngrok import ngrok
 import requests
-import utils
-import twitch
+import automatic_twitch_recorder.utils
+import automatic_twitch_recorder.twitch
 
 # payload = {'cmd': 'add',
 #            'args': ['nymn']

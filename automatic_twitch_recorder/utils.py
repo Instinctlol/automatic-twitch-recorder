@@ -54,6 +54,40 @@ def _write_config():
     config_file.write(json.dumps(CONFIG))
     config_file.close()
 
+def read_config_from_env():
+    global CONFIG
+    CONFIG = {
+        'client_id': _get_client_id(),
+        'client_secret': _get_client_secret(),
+        'ngrok_authtoken': _get_ngrok_authtoken()
+    }
+
+def _get_client_id():
+    client_id = get_safe_from_list(os.environ, 'CLIENT_ID')
+    if not client_id:
+        raise Exception('The enviroment variable \'CLIENT_ID\' is required.')
+
+    return client_id
+
+def _get_client_secret():
+    client_secret = get_safe_from_list(os.environ, 'CLIENT_SECRET')
+    if not client_secret:
+        raise Exception('The enviroment variable \'CLIENT_SECRET\' is required.')
+    
+    return client_secret
+
+def _get_ngrok_authtoken():
+    ngrok_authtoken = get_safe_from_list(os.environ, 'NGROK_AUTHTOKEN')
+    if not ngrok_authtoken:
+        return ''
+    
+    return ngrok_authtoken
+
+def get_safe_from_list(list, key, default=None):
+        try:
+            return list[key]
+        except Exception:
+            return default
 
 def get_client_id():
     global CONFIG

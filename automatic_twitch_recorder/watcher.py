@@ -1,7 +1,7 @@
 import datetime
 import streamlink
 import os
-from utils import get_valid_filename, StreamQualities
+from automatic_twitch_recorder.utils import get_valid_filename, StreamQualities
 
 
 class Watcher:

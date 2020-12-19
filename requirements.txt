@@ -13,7 +13,7 @@ pyrsistent==0.17.3
 PySocks==1.7.1
 requests==2.24.0
 six==1.15.0
-streamlink==1.7.0
+git+git://github.com/streamlink/streamlink@030dbc5#egg=streamlink
 urllib3==1.25.11
 websocket-client==0.57.0
 zipp==3.4.0

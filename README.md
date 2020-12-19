@@ -37,6 +37,17 @@ $ add nymn
 $ start
 ```
 
+### Using the DOCKER Image
+
+- configure the environment variables in the docker-compose.yml
+  - `CLIENT_ID`: (required) the twitch client id created on the [twitch dev portal](https://dev.twitch.tv/console/apps)
+  - `CLIENT_SECRET`: (required) the twitch client secret created on the [twitch dev portal](https://dev.twitch.tv/console/apps)
+  - `STREAMERS`: (required) defines the streamers to watch for in `streamer[@quality]` format. For multiple streamers seperate them with `|`
+  - `NGROK_AUTHTOKEN`: the ngrok authtoken
+  - `DOWNLOAD_FOLDER`: the download folder to use. (inside the docker container it will be prefixed with `/recordings`)
+  - `CHECK_INTERVAL`: the amount of seconds to check if the streamer is online
+- mount a folder/volume to the `/recordings` folder inside the container
+- run `docker-compose up -d` to start recording inside docker
 
 ## Bugs:
 

@@ -4,10 +4,10 @@ import threading
 from concurrent.futures import ThreadPoolExecutor
 from http.server import HTTPServer
 
-import ATRHandler
-import twitch
-from utils import get_client_id, StreamQualities
-from watcher import Watcher
+import automatic_twitch_recorder.ATRHandler
+import automatic_twitch_recorder.twitch
+from automatic_twitch_recorder.utils import get_client_id, StreamQualities
+from automatic_twitch_recorder.watcher import Watcher
 
 class Daemon(HTTPServer):
     #
@@ -45,7 +45,7 @@ class Daemon(HTTPServer):
             streamer_dict.update({'preferred_quality': quality})
 
             # get channel id of streamer
-            user_info = list(twitch.get_user_info(streamer))
+            user_info = list(automatic_twitch_recorder.twitch.get_user_info(streamer))
 
             # check if user exists
             if user_info:
@@ -95,7 +95,7 @@ class Daemon(HTTPServer):
             user_ids.append(self.streamers[streamer]['user_info']['id'])
 
         if user_ids:
-            streams_info = twitch.get_stream_info(*user_ids)
+            streams_info = automatic_twitch_recorder.twitch.get_stream_info(*user_ids)
 
             # save streaming information for all streamers, if it exists
             for stream_info in streams_info:

@@ -6,7 +6,7 @@ import hmac
 import json
 from jsonschema import validate, ValidationError
 
-from daemon import Daemon
+from automatic_twitch_recorder.daemon import Daemon
 
 
 class ATRHandler(BaseHTTPRequestHandler):

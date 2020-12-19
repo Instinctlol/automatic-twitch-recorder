@@ -1,0 +1,13 @@
+version: '3.7'
+services: 
+  twitch-recorder:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    environment: 
+      - 'CLIENT_ID='
+      - 'CLIENT_SECRET='
+      - 'STREAMERS='
+    volumes:
+      - ./recordings:/recordings
+    

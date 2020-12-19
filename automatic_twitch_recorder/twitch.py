@@ -1,10 +1,12 @@
 import requests
 
-import utils
+import automatic_twitch_recorder.utils
 
-auth = {'Client-ID': str(utils.get_client_id()),
-        'Authorization': 'Bearer ' + utils.get_app_access_token()}
-
+def get_twitch_auth() -> dict:
+    return {
+        'Client-ID': str(automatic_twitch_recorder.utils.get_client_id()),
+        'Authorization': 'Bearer ' + automatic_twitch_recorder.utils.get_app_access_token()
+    }
 
 def get_user_info(user_login, *args: str) -> list:
     """
@@ -28,7 +30,7 @@ def get_user_info(user_login, *args: str) -> list:
         args = args[:99]
     for user_login_i in args:
         get_user_id_url += '&login=' + user_login_i
-    r = requests.get(get_user_id_url, headers=auth)
+    r = requests.get(get_user_id_url, headers=get_twitch_auth())
     temp = r.json()
     if temp['data']:
         return list(temp['data'])
@@ -58,7 +60,7 @@ def get_stream_info(user_id: str, *args):
     get_user_id_url = 'https://api.twitch.tv/helix/streams?first=100&user_id=' + user_id
     for user_id in args:
         get_user_id_url += '&user_id=' + user_id
-    r = requests.get(get_user_id_url, headers=auth)
+    r = requests.get(get_user_id_url, headers=get_twitch_auth())
     temp = r.json()
     if temp['data']:
         return list(temp['data'])
