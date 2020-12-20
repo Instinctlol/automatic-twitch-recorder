@@ -9,10 +9,6 @@ import twitch
 from utils import get_client_id, StreamQualities
 from watcher import Watcher
 
-
-# from pyngrok import ngrok
-
-
 class Daemon(HTTPServer):
     #
     # CONSTANTS
@@ -29,9 +25,9 @@ class Daemon(HTTPServer):
         self.streamers = {}  # holds all streamers that need to be surveilled
         self.watched_streamers = {}  # holds all live streamers that are currently being recorded
         self.client_id = get_client_id()
-        # self.ngrok_url = ngrok.connect(port=self.PORT, auth_token=get_ngrok_auth_token())
         self.kill = False
         self.started = False
+        self.download_folder = os.getcwd() + os.path.sep + "#streamer#"
         # ThreadPoolExecutor(max_workers): If max_workers is None or not given, it will default to the number of
         # processors on the machine, multiplied by 5
         self.pool = ThreadPoolExecutor()
@@ -87,6 +83,10 @@ class Daemon(HTTPServer):
         self.check_interval = secs
         return 'Interval is now set to ' + str(secs) + ' seconds.'
 
+    def set_download_folder(self, download_folder):
+        self.download_folder = download_folder
+        return 'Download folder is now set to \'' + download_folder + '\' .'
+
     def _check_streams(self):
         user_ids = []
 
@@ -96,10 +96,6 @@ class Daemon(HTTPServer):
 
         if user_ids:
             streams_info = twitch.get_stream_info(*user_ids)
-
-            # for user_id in user_ids:
-            #     # register webhooks
-            #     self._post_webhook_request(user_id)
 
             # save streaming information for all streamers, if it exists
             for stream_info in streams_info:
@@ -127,7 +123,7 @@ class Daemon(HTTPServer):
         for live_streamer in live_streamers_list:
             if live_streamer not in self.watched_streamers:
                 live_streamer_dict = self.streamers.pop(live_streamer)
-                curr_watcher = Watcher(live_streamer_dict)
+                curr_watcher = Watcher(live_streamer_dict, self.download_folder)
                 self.watched_streamers.update({live_streamer: {'watcher': curr_watcher,
                                                                'streamer_dict': live_streamer_dict}})
                 if not self.kill:
@@ -162,17 +158,6 @@ class Daemon(HTTPServer):
         threading.Thread(target=self.shutdown, daemon=True).start()
         return 'Daemon exited successfully'
 
-    # def _post_webhook_request(self, user_id):
-    #     payload = {'hub.mode': 'subscribe',
-    #                'hub.topic': self.WEBHOOK_URL_PREFIX + user_id,
-    #                'hub.callback': self.ngrok_url + '/webhooks/',
-    #                'hub.lease_seconds': self.LEASE_SECONDS,
-    #                'hub.secret': self.WEBHOOK_SECRET
-    #                }
-    #     auth = {'Client-ID': str(get_client_id()),
-    #             'Authorization': 'Bearer ' + get_app_access_token()}
-    #     requests.post('https://api.twitch.tv/helix/webhooks/hub', data=payload, headers=auth)
-
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)
@@ -184,11 +169,4 @@ if __name__ == '__main__':
     finally:
         server.exit()
 
-    # myDaemon = get_instance()
-    # myDaemon.add_streamer('forsen')
-    # myDaemon.add_streamer('nani')
-    # myDaemon.add_streamer('nymn')
-    # myDaemon.add_streamer('bobross')
-    # myDaemon.start()
-    # myDaemon.get_streamers()
     print('exited gracefully')
