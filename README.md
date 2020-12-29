@@ -40,14 +40,13 @@ $ start
 
 ## Bugs:
 
-- Adding a streamer that is live, starting the daemon and then adding another streamer will result in TypeError errors in streamlink module.
 - CLI shenanigans
     - text will get printed into the prompt / user input. However, your input will still be valid, so do not worry. This does not restrict the functionality of this application.
     - There's an open [stackoverflow question](https://stackoverflow.com/questions/57027294/cmd-module-async-job-prints-are-overwriting-prompt-input) for this. Any volunteers?
 
 ## Plans for the future:
 
-- Refactor to easily support any supported streamlink platform, e.g. YouTube and Mixer.
+- Refactor to easily support any supported streamlink platform, e.g. YouTube.
 - When done recording, upload to YouTube
 - Export to .exe so you don't have to install python
   - PyInstaller and streamlink apparently do not work well together (streamlink will throw NoPluginError). Help is appreciated.
