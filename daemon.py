@@ -9,6 +9,7 @@ import twitch
 from utils import get_client_id, StreamQualities
 from watcher import Watcher
 
+
 class Daemon(HTTPServer):
     #
     # CONSTANTS
