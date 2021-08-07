@@ -100,7 +100,7 @@ class Daemon(HTTPServer):
 
             # save streaming information for all streamers, if it exists
             for stream_info in streams_info:
-                streamer_name = stream_info['user_name'].lower()
+                streamer_name = stream_info['user_login']
                 self.streamers[streamer_name].update({'stream_info': stream_info})
 
             live_streamers = []
@@ -110,7 +110,7 @@ class Daemon(HTTPServer):
                 try:
                     stream_info = streamer_info['stream_info']
                     if stream_info['type'] == 'live':
-                        live_streamers.append(stream_info['user_name'].lower())
+                        live_streamers.append(stream_info['user_login'])
                 except KeyError:
                     pass
 
