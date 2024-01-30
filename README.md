@@ -1,3 +1,7 @@
+# discontinued
+
+This script was declared end-of-life and is not maintained anymore. Please have a look into well maintained, more feature-rich solutions, like [ganymede](https://github.com/Zibbp/ganymede) and [LiveStreamDVR](https://github.com/MrBrax/LiveStreamDVR)
+
 # automatic-twitch-recorder
 
 Checks if a user on twitch is currently streaming and then records the stream via streamlink
